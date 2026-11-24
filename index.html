@@ -1,32 +1,161 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111827"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.webmanifest"><title>퇴근했니?</title>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#202d29"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.webmanifest"><title>퇴근했니?</title>
 <style>
-body{margin:0;background:#f6f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}.wrap{max-width:720px;margin:auto;padding:14px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 10px 28px rgba(17,24,39,.07)}h1{margin:0;font-size:26px}.sub,.muted{color:#6b7280;font-size:13px}.hero{background:linear-gradient(135deg,#111827,#374151);color:#fff;border-radius:18px;padding:16px;margin:12px 0}.big{font-size:34px;font-weight:800;margin:4px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{margin-bottom:10px}label{display:block;color:#6b7280;font-size:12px;margin-bottom:5px}input,textarea,button{font:inherit}input,textarea{width:100%;box-sizing:border-box;border:1px solid #e5e7eb;border-radius:12px;padding:11px;background:#fff}textarea{min-height:72px}button{border:0;border-radius:12px;padding:12px 14px;font-weight:700}.primary{background:#111827;color:#fff}.secondary{background:#eef2f7}.danger{background:#fee2e2;color:#991b1b}.quick{width:100%;font-size:18px;padding:15px;background:#111827;color:#fff}.btns{display:flex;gap:8px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:10px}.stat b{display:block;font-size:18px;margin-top:5px}.item{padding:11px 0;border-bottom:1px solid #e5e7eb;display:grid;grid-template-columns:86px 1fr auto;gap:8px}.pill{display:inline-block;background:#f3f4f6;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700}.preview{white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:11px;font-size:12px;overflow:auto;max-height:240px}@media(max-width:600px){.row{grid-template-columns:1fr}.item{grid-template-columns:78px 1fr}.item button{grid-column:1/-1}}
-</style></head><body><div class="wrap">
-<section class="card"><h1>퇴근했니? 🕰️</h1><div class="sub">아이폰 로컬 저장 · 엑셀 붙여넣기용</div><button class="quick" id="quickBtn" style="margin-top:14px">지금 퇴근하기</button><div class="hero"><div id="heroDate" class="muted" style="color:#d1d5db"></div><div id="heroOT" class="big">0시간 0분</div><div id="heroMsg" class="muted" style="color:#d1d5db"></div></div>
-<div class="row"><div class="field"><label>날짜</label><input id="dateInput" type="date"></div><div class="field"><label>정규 퇴근시간</label><input id="regularEnd" type="time"></div></div>
-<div class="row"><div class="field"><label>출근시간</label><input id="startTime" type="time"></div><div class="field"><label>실제 퇴근시간</label><input id="actualEnd" type="time"></div></div>
-<div class="field"><label>메모</label><textarea id="memo" placeholder="예: 월말 마감, 긴급 대응"></textarea></div><div class="btns"><button class="primary" id="saveBtn">기록 저장</button><button class="secondary" id="nowBtn">지금 시간 넣기</button><button class="danger" id="deleteBtn">삭제</button></div></section>
+body{margin:0;background:#f4f1ea;color:#202d29;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}.wrap{max-width:720px;margin:auto;padding:14px}.card{background:#fff;border:1px solid #e3ded1;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 10px 28px rgba(17,24,39,.07)}h1{margin:0;font-size:26px}.sub,.muted{color:#6b7280;font-size:13px}.hero{background:linear-gradient(135deg,#202d29,#374151);color:#fff;border-radius:18px;padding:16px;margin:12px 0}.big{font-size:34px;font-weight:800;margin:4px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{margin-bottom:10px}label{display:block;color:#6b7280;font-size:12px;margin-bottom:5px}input,textarea,button{font:inherit}input,textarea{width:100%;box-sizing:border-box;border:1px solid #e3ded1;border-radius:12px;padding:11px;background:#fff}textarea{min-height:72px}button{border:0;border-radius:12px;padding:12px 14px;font-weight:700}.primary{background:#202d29;color:#fff}.secondary{background:#eeeae0}.danger{background:#fee2e2;color:#991b1b}.quick{width:100%;font-size:18px;padding:15px;background:#202d29;color:#fff}.btns{display:flex;gap:8px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f8f6f0;border:1px solid #e3ded1;border-radius:14px;padding:10px}.stat b{display:block;font-size:18px;margin-top:5px}.item{padding:11px 0;border-bottom:1px solid #e3ded1;display:grid;grid-template-columns:86px 1fr auto;gap:8px}.pill{display:inline-block;background:#f3f4f6;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700}.preview{white-space:pre-wrap;background:#f8f6f0;border:1px solid #e3ded1;border-radius:12px;padding:11px;font-size:12px;overflow:auto;max-height:240px}@media(max-width:600px){.row{grid-template-columns:1fr}.item{grid-template-columns:78px 1fr}.item button{grid-column:1/-1}}
 
-<section class="card"><h2>이번 달</h2><div class="stats"><div class="stat"><span class="muted">총 야근</span><b id="monthSum">0h</b></div><div class="stat"><span class="muted">야근 일수</span><b id="monthDays">0일</b></div><div class="stat"><span class="muted">평균</span><b id="monthAvg">0h</b></div></div></section>
+.wrap{padding:24px 16px max(24px,env(safe-area-inset-bottom))}
+.card{background:#fffdf9;padding:clamp(16px,4vw,26px);box-shadow:0 8px 24px #3232250c}
+h1{font-size:32px;letter-spacing:-.045em}h2{font-size:18px;margin:0 0 16px;letter-spacing:-.035em}
+.hero{background:linear-gradient(125deg,#202d29,#344a40);padding:22px;margin:20px 0;color:#fffdf6}
+.hero .muted{color:#e4dbc0}.big{letter-spacing:-.05em}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.quick{font-size:15px;color:#fffdf7}.quick.out{background:#e9dfc7;color:#282e27}
+.split{display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid #ffffff35;padding-top:12px;margin-top:14px;font-size:13px}
+.split b{color:#f4e6bd;margin-left:4px}
+.field{min-width:0}input,textarea{font-size:16px;color:inherit}
+:focus-visible{outline:2px solid #806124;outline-offset:2px}
+button{cursor:pointer}#feedback{min-height:1.3em;margin:8px 0;font-size:13px;color:#3b5146}
+@media(max-width:370px){.quick{padding-inline:6px}}
+</style></head><body><div class="wrap">
+<section class="card">
+<h1>퇴근했니?</h1>
+<div class="hero">
+  <div id="heroDate" class="muted"></div>
+  <div class="muted">총 초과근무</div>
+  <div id="heroOT" class="big"></div>
+  <div class="split"><span>조기 출근 <b id="earlyOT"></b></span><span>퇴근 후 <b id="lateOT"></b></span></div>
+</div>
+<div class="quick-actions"><button class="quick" id="quickStart">지금 출근</button><button class="quick out" id="quickBtn">지금 퇴근</button></div>
+<p id="feedback" role="status"></p>
+<h2>근무 기록</h2>
+<div class="field"><label for="dateInput">날짜</label><input id="dateInput" type="date"></div>
+<div class="row"><div class="field"><label for="startTime">실제 출근</label><input id="startTime" type="time"></div><div class="field"><label for="actualEnd">실제 퇴근</label><input id="actualEnd" type="time"></div></div>
+<div class="row"><div class="field"><label for="regularStart">정규 출근</label><input id="regularStart" type="time"></div><div class="field"><label for="regularEnd">정규 퇴근</label><input id="regularEnd" type="time"></div></div>
+<div class="field"><label for="memo">메모</label><textarea id="memo" placeholder="예: 월말 마감, 긴급 대응"></textarea></div>
+<div class="btns"><button class="primary" id="saveBtn">기록 저장</button><button class="danger" id="deleteBtn">삭제</button></div></section>
+
+<section class="card"><h2>이번 달</h2><div class="stats"><div class="stat"><span class="muted">총 초과근무</span><b id="monthSum">0h</b></div><div class="stat"><span class="muted">초과근무 일수</span><b id="monthDays">0일</b></div><div class="stat"><span class="muted">평균</span><b id="monthAvg">0h</b></div></div></section>
 
 <section class="card"><h2>엑셀로 보내기</h2><div class="row"><div class="field"><label>시작일</label><input id="fromDate" type="date"></div><div class="field"><label>종료일</label><input id="toDate" type="date"></div></div><div class="btns"><button class="primary" id="copyBtn">엑셀 붙여넣기용 복사</button><button class="secondary" id="shareBtn">공유하기</button><button class="secondary" id="csvBtn">CSV 저장</button></div><div class="muted" style="margin:10px 0">Excel 첫 셀에 붙여넣으면 열/행이 자동으로 나뉩니다.</div><div id="preview" class="preview"></div></section>
 
 <section class="card"><h2>최근 기록</h2><div id="recentList"></div></section>
-<section class="card"><h2>기본 시간</h2><div class="row"><div class="field"><label>기본 출근시간</label><input id="defaultStart" type="time"></div><div class="field"><label>기본 정규 퇴근시간</label><input id="defaultEnd" type="time"></div></div><button class="secondary" id="saveSettings">설정 저장</button></section></div>
+<section class="card"><h2>기본 시간</h2><div class="row"><div class="field"><label>기본 정규 출근시간</label><input id="defaultStart" type="time"></div><div class="field"><label>기본 정규 퇴근시간</label><input id="defaultEnd" type="time"></div></div><button class="secondary" id="saveSettings">설정 저장</button></section></div>
 
 <script>
-const KEY='ot.local.records',SKEY='ot.local.settings';let records=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('ot.v2.records')||localStorage.getItem('overtimeTracker.v1.records')||'{}');let settings=JSON.parse(localStorage.getItem(SKEY)||'{"startTime":"08:30","regularEnd":"17:30"}');const $=x=>document.getElementById(x),pad=n=>String(n).padStart(2,'0'),dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>dkey(new Date()),min=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m},calc=(r,a)=>{const x=min(r),y=min(a);return x==null||y==null?0:Math.max(0,y-x)},fmt=m=>`${Math.floor((m||0)/60)}시간 ${(m||0)%60}분`,short=m=>{if(!m)return'0h';let h=Math.floor(m/60),mm=m%60;return mm?`${h}h ${mm}m`:`${h}h`},save=()=>localStorage.setItem(KEY,JSON.stringify(records));
-const dateInput=$('dateInput'),regularEnd=$('regularEnd'),startTime=$('startTime'),actualEnd=$('actualEnd'),memo=$('memo');
-function loadDate(k){const r=records[k];dateInput.value=k;startTime.value=r?.startTime||settings.startTime;regularEnd.value=r?.regularEnd||settings.regularEnd;actualEnd.value=r?.actualEnd||'';memo.value=r?.memo||'';hero()}
-function hero(){const k=dateInput.value||today(),d=new Date(k+'T00:00:00'),o=calc(regularEnd.value,actualEnd.value);$('heroDate').textContent=new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(d);$('heroOT').textContent=fmt(o);$('heroMsg').textContent=actualEnd.value?(o?`오늘 ${fmt(o)} 야근했어요.`:'정시 퇴근 또는 그 이전이에요. 🎉'):'아직 퇴근 기록이 없어요.'}
-function monthStats(){const n=new Date(),p=`${n.getFullYear()}-${pad(n.getMonth()+1)}-`,v=Object.entries(records).filter(([k])=>k.startsWith(p)).map(([,r])=>r.overtime||0).filter(Boolean),sum=v.reduce((a,b)=>a+b,0),c=v.length;$('monthSum').textContent=short(sum);$('monthDays').textContent=c+'일';$('monthAvg').textContent=short(c?Math.round(sum/c):0)}
-function recent(){const b=$('recentList');b.innerHTML='';const a=Object.entries(records).sort((x,y)=>y[0].localeCompare(x[0])).slice(0,15);if(!a.length){b.innerHTML='<div class="muted">아직 기록이 없어요.</div>';return}a.forEach(([k,r])=>{let e=document.createElement('div');e.className='item';e.innerHTML=`<div><b>${k.slice(5)}</b><div class="muted">${r.actualEnd||'-'} 퇴근</div></div><div><span class="pill">${fmt(r.overtime||0)}</span><div class="muted">${r.memo||''}</div></div><button class="secondary">열기</button>`;e.querySelector('button').onclick=()=>{loadDate(k);scrollTo({top:0,behavior:'smooth'})};b.appendChild(e)})}
-function rows(){const f=$('fromDate').value,t=$('toDate').value;return Object.entries(records).filter(([k])=>(!f||k>=f)&&(!t||k<=t)).sort((a,b)=>a[0].localeCompare(b[0]))}
-function tsv(){const a=[['날짜','출근','정규퇴근','실제퇴근','야근시간','야근(분)','메모']];rows().forEach(([k,r])=>a.push([k,r.startTime||'',r.regularEnd||'',r.actualEnd||'',fmt(r.overtime||0),r.overtime||0,(r.memo||'').replace(/\t|\n/g,' ')]));return a.map(r=>r.join('\t')).join('\n')}
-function preview(){$('preview').textContent=tsv()}function refresh(){monthStats();recent();preview();hero()}
-$('quickBtn').onclick=()=>{const n=new Date(),k=today(),t=`${pad(n.getHours())}:${pad(n.getMinutes())}`,r=records[k]||{},reg=r.regularEnd||settings.regularEnd;records[k]={startTime:r.startTime||settings.startTime,regularEnd:reg,actualEnd:t,overtime:calc(reg,t),memo:r.memo||'',updatedAt:n.toISOString()};save();loadDate(k);refresh();alert(`${t} 퇴근으로 기록했어요.\n야근 ${fmt(records[k].overtime)}`)};
-$('saveBtn').onclick=()=>{const k=dateInput.value;if(!k||!actualEnd.value){alert('날짜와 실제 퇴근시간을 입력해 주세요.');return}records[k]={startTime:startTime.value,regularEnd:regularEnd.value,actualEnd:actualEnd.value,overtime:calc(regularEnd.value,actualEnd.value),memo:memo.value.trim(),updatedAt:new Date().toISOString()};save();refresh();alert('저장했어요.')};$('nowBtn').onclick=()=>{const n=new Date();actualEnd.value=`${pad(n.getHours())}:${pad(n.getMinutes())}`;hero()};$('deleteBtn').onclick=()=>{const k=dateInput.value;if(records[k]&&confirm('삭제할까요?')){delete records[k];save();loadDate(k);refresh()}};
-$('fromDate').onchange=preview;$('toDate').onchange=preview;$('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(tsv());alert('복사했어요. Excel 첫 셀에 붙여넣으면 됩니다.')}catch(e){alert('자동 복사가 막혔어요. 아래 미리보기 내용을 길게 눌러 복사해 주세요.')}};$('shareBtn').onclick=async()=>{if(navigator.share)await navigator.share({title:'야근 기록',text:tsv()});else{await navigator.clipboard.writeText(tsv());alert('공유 기능이 없어 대신 복사했어요.')}};$('csvBtn').onclick=()=>{const a=[['날짜','출근','정규퇴근','실제퇴근','야근시간','야근(분)','메모']];rows().forEach(([k,r])=>a.push([k,r.startTime||'',r.regularEnd||'',r.actualEnd||'',fmt(r.overtime||0),r.overtime||0,r.memo||'']));const csv=a.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),x=document.createElement('a');x.href=URL.createObjectURL(blob);x.download='야근기록.csv';x.click()};
+const KEY='ot.local.records',SKEY='ot.local.settings';let records=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('ot.v2.records')||localStorage.getItem('overtimeTracker.v1.records')||'{}');let settings=JSON.parse(localStorage.getItem(SKEY)||'{"startTime":"08:30","regularEnd":"17:30"}');const $=x=>document.getElementById(x),pad=n=>String(n).padStart(2,'0'),dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>dkey(new Date()),min=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m},fmt=m=>`${Math.floor((m||0)/60)}시간 ${(m||0)%60}분`,short=m=>{if(!m)return'0h';let h=Math.floor(m/60),mm=m%60;return mm?`${h}h ${mm}m`:`${h}h`},save=()=>localStorage.setItem(KEY,JSON.stringify(records));
+const dateInput=$('dateInput'), regularStart=$('regularStart'), regularEnd=$('regularEnd');
+const startTime=$('startTime'), actualEnd=$('actualEnd'), memo=$('memo');
+
+function overtime(r) {
+  if (r.regularStart === undefined) return {early: 0, late: r.overtime || 0};
+  const start = min(r.startTime);
+  const end = min(r.actualEnd);
+  const scheduledStart = min(r.regularStart);
+  const scheduledEnd = min(r.regularEnd);
+  return {
+    early: start === null || scheduledStart === null ? 0 : Math.max(0, Math.min(end ?? scheduledStart, scheduledStart) - start),
+    late: end === null || scheduledEnd === null ? 0 : Math.max(0, end - Math.max(start ?? scheduledEnd, scheduledEnd))
+  };
+}
+function total(r) { const {early, late} = overtime(r); return early + late; }
+function formRecord() {
+  return {
+    startTime:startTime.value, actualEnd:actualEnd.value, regularStart:regularStart.value,
+    regularEnd:regularEnd.value, memo:memo.value.trim()
+  };
+}
+function loadDate(k) {
+  const r = records[k];
+  dateInput.value = k;
+  regularStart.value = r?.regularStart || r?.startTime || settings.startTime;
+  regularEnd.value = r?.regularEnd || settings.regularEnd;
+  startTime.value = r?.regularStart !== undefined ? r.startTime || '' : '';
+  actualEnd.value = r?.actualEnd || '';
+  memo.value = r?.memo || '';
+  $('feedback').textContent = '';
+  hero();
+}
+function hero() {
+  const d = new Date((dateInput.value || today()) + 'T00:00:00');
+  const {early,late} = overtime(formRecord());
+  $('heroDate').textContent = new Intl.DateTimeFormat('ko-KR',{dateStyle:'full'}).format(d);
+  $('heroOT').textContent = fmt(early + late);
+  $('earlyOT').textContent = fmt(early);
+  $('lateOT').textContent = fmt(late);
+}
+function monthStats() {
+  const prefix = today().slice(0,7);
+  const totals = Object.entries(records).filter(([k]) => k.startsWith(prefix)).map(([,r]) => total(r)).filter(Boolean);
+  const sum = totals.reduce((a,b) => a+b,0);
+  $('monthSum').textContent = short(sum);
+  $('monthDays').textContent = totals.length + '일';
+  $('monthAvg').textContent = short(totals.length ? Math.round(sum/totals.length) : 0);
+}
+function recent() {
+  const list = $('recentList');
+  list.replaceChildren();
+  const entries = Object.entries(records).sort(([a],[b])=>b.localeCompare(a)).slice(0,15);
+  if (!entries.length) { list.textContent = '아직 기록이 없어요.'; return; }
+  for (const [date,r] of entries) {
+    const item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = '<div><b></b><div class="muted"></div></div><div><span class="pill"></span><div class="muted"></div></div><button class="secondary">열기</button>';
+    item.querySelector('b').textContent = date.slice(5);
+    const [time,note] = item.querySelectorAll('.muted');
+    time.textContent = [r.regularStart !== undefined && r.startTime && r.startTime+' 출근',r.actualEnd && r.actualEnd+' 퇴근'].filter(Boolean).join(' · ');
+    note.textContent = r.memo || '';
+    item.querySelector('.pill').textContent = fmt(total(r));
+    item.querySelector('button').onclick = () => {loadDate(date);scrollTo({top:0,behavior:'smooth'});};
+    list.appendChild(item);
+  }
+}
+function exportRows() {
+  const f=$('fromDate').value,t=$('toDate').value;
+  const entries=Object.entries(records).filter(([k])=>(!f||k>=f)&&(!t||k<=t)).sort(([a],[b])=>a.localeCompare(b));
+  return [['날짜','정규 출근','실제 출근','정규 퇴근','실제 퇴근','조기 출근(분)','퇴근 후(분)','총 초과근무(분)','메모'],
+    ...entries.map(([k,r])=>{
+      const {early,late}=overtime(r);
+      return [k,r.regularStart ?? r.startTime ?? '',r.regularStart === undefined ? '' : r.startTime,r.regularEnd || '',r.actualEnd || '',early,late,early+late,r.memo || ''];
+    })];
+}
+function tsv() { return exportRows().map(row=>row.map(v=>String(v).replace(/[\t\r\n]/g,' ')).join('\t')).join('\n'); }
+function preview() { $('preview').textContent=tsv(); }
+function refresh() { monthStats(); recent(); preview(); hero(); }
+
+function persist(message) {
+  const k=dateInput.value;
+  const r=formRecord();
+  const feedback=$('feedback');
+  if (!k || !r.regularStart || !r.regularEnd || (!r.startTime && !r.actualEnd)) {
+    feedback.textContent='날짜와 정규 시간, 실제 출근 또는 퇴근 시간을 입력해 주세요.';
+    return false;
+  }
+  if (r.regularStart > r.regularEnd || (r.startTime && r.actualEnd && r.startTime > r.actualEnd)) {
+    feedback.textContent='같은 날 기준으로 출근 시간이 퇴근 시간보다 앞서야 해요.';
+    return false;
+  }
+  records[k]={...r,overtime:total(r),updatedAt:new Date().toISOString()};
+  save();
+  refresh();
+  feedback.textContent=message;
+  return true;
+}
+function quickRecord(input,label) {
+  const n=new Date();
+  const k=dkey(n);
+  if (dateInput.value !== k) loadDate(k);
+  const time=pad(n.getHours())+':'+pad(n.getMinutes());
+  const previous=input.value;
+  if (previous && !confirm(previous+' '+label+' 시간을 '+time+'으로 변경할까요?')) return;
+  input.value=time;
+  if (!persist(time+' '+label+' 기록을 저장했어요.')) {input.value=previous;hero();}
+}
+$('quickStart').onclick=()=>quickRecord(startTime,'출근');
+$('quickBtn').onclick=()=>quickRecord(actualEnd,'퇴근');
+$('saveBtn').onclick=()=>persist('기록을 저장했어요.');
+$('deleteBtn').onclick=()=>{const k=dateInput.value;if(records[k]&&confirm('삭제할까요?')){delete records[k];save();loadDate(k);refresh();}};
+dateInput.onchange=()=>{if(dateInput.value) loadDate(dateInput.value);};
+for(const input of [startTime,actualEnd,regularStart,regularEnd]) input.oninput=hero;
+$('fromDate').onchange=preview;$('toDate').onchange=preview;$('copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(tsv());alert('복사했어요. Excel 첫 셀에 붙여넣으면 됩니다.')}catch(e){alert('자동 복사가 막혔어요. 아래 미리보기 내용을 길게 눌러 복사해 주세요.')}};$('shareBtn').onclick=async()=>{if(navigator.share)await navigator.share({title:'야근 기록',text:tsv()});else{await navigator.clipboard.writeText(tsv());alert('공유 기능이 없어 대신 복사했어요.')}};$('csvBtn').onclick=()=>{const a=exportRows();const csv=a.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),x=document.createElement('a');x.href=URL.createObjectURL(blob);x.download='야근기록.csv';x.click()};
 $('defaultStart').value=settings.startTime;$('defaultEnd').value=settings.regularEnd;$('saveSettings').onclick=()=>{settings={startTime:$('defaultStart').value||'08:30',regularEnd:$('defaultEnd').value||'17:30'};localStorage.setItem(SKEY,JSON.stringify(settings));alert('저장했어요.')};
 const n=new Date();$('fromDate').value=`${n.getFullYear()}-${pad(n.getMonth()+1)}-01`;$('toDate').value=dkey(new Date(n.getFullYear(),n.getMonth()+1,0));loadDate(today());refresh();if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script></body></html>

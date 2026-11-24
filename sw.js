@@ -1,1 +1,18 @@
-const C='ot-local-v1',A=['./','./index.html','./manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
+const CACHE = 'ot-local-v2';
+const ASSETS = ['./', './index.html', './manifest.webmanifest'];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.delete('ot-local-v1').then(() => self.clients.claim()));
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.mode !== 'navigate') return;
+  event.respondWith(fetch(event.request).catch(async () => {
+    const cache = await caches.open(CACHE);
+    return cache.match('./index.html');
+  }));
+});
