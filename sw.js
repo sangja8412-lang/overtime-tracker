@@ -1,4 +1,4 @@
-const CACHE = 'ot-local-v3';
+const CACHE = 'ot-local-v4';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './office-capybara.webp'];
 
 self.addEventListener('install', event => {
@@ -6,7 +6,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(Promise.all(['ot-local-v1', 'ot-local-v2'].map(key => caches.delete(key))).then(() => self.clients.claim()));
+  event.waitUntil(Promise.all(['ot-local-v1', 'ot-local-v2', 'ot-local-v3'].map(key => caches.delete(key))).then(() => self.clients.claim()));
 });
 
 self.addEventListener('fetch', event => {

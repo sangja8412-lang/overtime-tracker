@@ -36,7 +36,24 @@ body{background:radial-gradient(ellipse at top,#fff9e9,#f0e6d5 60%)}
 .daily-card dt{color:#705c3d;font-size:11px;margin-bottom:4px}.daily-card dd{font-size:clamp(12px,3.4vw,18px);font-weight:750;margin:0;font-variant-numeric:tabular-nums}
 .daily-details{color:#6d5837;margin:8px 0 0;font-size:12px;overflow-wrap:anywhere}
 @media(max-width:360px){.brand span{white-space:normal}.hero{grid-template-columns:minmax(0,1fr) 33%}}
+
+.app-nav{display:flex;gap:6px;padding:5px;margin:0 0 12px;border:1px solid #e2cda5;border-radius:14px;background:#fffaf0}
+.app-nav button{flex:1;background:transparent;color:#644b29}
+.app-nav [aria-selected=true]{background:#32271c;color:#fff5df}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px}
+.cal-head h2{margin:0}.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:10px}
+.cal-weekday{text-align:center;font-size:12px;color:#705c3d;padding:5px 0}
+.cal-day{min-height:46px;padding:4px 0;background:#f7f0e5;color:#2a2118;font-weight:650;font-size:14px;border:1px solid transparent}
+.cal-day.has-record{background:#efe5d5}.cal-day.has-overtime{background:#f0d494;color:#3d290f}
+.cal-day[aria-current=date]{border-color:#996b31}.cal-day[aria-pressed=true]{background:#32271c;color:#fff5df}
+.cal-day small{display:block;font-size:9px;white-space:nowrap;margin-top:2px}
+.cal-month{font-size:13px;color:#705c3d;margin:10px 0 16px}
 </style></head><body><div class="wrap">
+<div class="app-nav" role="tablist" aria-label="근무 기록 보기">
+  <button id="recordTab" role="tab" aria-selected="true" aria-controls="recordPanel">출퇴근</button>
+  <button id="calendarTab" role="tab" aria-selected="false" aria-controls="calendarPanel" tabindex="-1">달력</button>
+</div>
+<div id="recordPanel" role="tabpanel" aria-labelledby="recordTab">
 <section class="card">
 <header class="brand"><h1>퇴근했니?</h1><span>출퇴근 기록</span></header>
 <div class="hero"><div>
@@ -65,6 +82,16 @@ body{background:radial-gradient(ellipse at top,#fff9e9,#f0e6d5 60%)}
 
 
 <section class="card"><h2>기본 시간</h2><div class="row"><div class="field"><label>기본 정규 출근시간</label><input id="defaultStart" type="time"></div><div class="field"><label>기본 정규 퇴근시간</label><input id="defaultEnd" type="time"></div></div><button class="secondary" id="saveSettings">설정 저장</button></section></div>
+<section id="calendarPanel" role="tabpanel" aria-labelledby="calendarTab" class="card" hidden>
+  <div class="cal-head"><button class="secondary" id="prevMonth" aria-label="이전 달">‹</button><h2 id="calendarMonth" aria-live="polite"></h2><button class="secondary" id="nextMonth" aria-label="다음 달">›</button></div>
+  <div id="calGrid" class="cal-grid" role="group" aria-label="날짜 선택"></div>
+  <p id="calendarTotal" class="cal-month"></p>
+  <article class="daily-card today" id="calendarDetail" aria-live="polite">
+    <div class="daily-head"><strong id="calendarDate"></strong><button class="secondary" id="editCalendarDay"></button></div>
+    <dl><div><dt>출근</dt><dd id="calendarIn"></dd></div><div><dt>퇴근</dt><dd id="calendarOut"></dd></div><div><dt>초과근무</dt><dd id="calendarOT"></dd></div></dl>
+    <p class="daily-details" id="calendarNote"></p>
+  </article>
+</section></div>
 
 <script>
 const KEY='ot.local.records',SKEY='ot.local.settings';let records=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('ot.v2.records')||localStorage.getItem('overtimeTracker.v1.records')||'{}');let settings=JSON.parse(localStorage.getItem(SKEY)||'{"startTime":"08:30","regularEnd":"17:30"}');const $=x=>document.getElementById(x),pad=n=>String(n).padStart(2,'0'),dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>dkey(new Date()),min=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m},fmt=m=>`${Math.floor((m||0)/60)}시간 ${(m||0)%60}분`,short=m=>{if(!m)return'0h';let h=Math.floor(m/60),mm=m%60;return mm?`${h}h ${mm}m`:`${h}h`},save=()=>localStorage.setItem(KEY,JSON.stringify(records));
@@ -150,6 +177,104 @@ function recent() {
     list.appendChild(item);
   }
 }
+const calendarDateFormat = new Intl.DateTimeFormat('ko-KR',{dateStyle:'full'});
+let calendarDay = today();
+let calendarMonth = new Date(calendarDay.slice(0,7)+'-01T00:00:00');
+
+function calendarDetail(date) {
+  const record = records[date];
+  $('calendarDate').textContent = calendarDateFormat.format(new Date(date+'T00:00:00'));
+  $('calendarIn').textContent = record?.regularStart && record.startTime || '—';
+  $('calendarOut').textContent = record?.actualEnd || '—';
+  $('calendarOT').textContent = record ? compactDuration(total(record)) : '—';
+  $('editCalendarDay').textContent = record ? '기록 수정' : '기록 추가';
+  const {early,late} = record ? overtime(record) : {};
+  $('calendarNote').textContent = record
+    ? ['조기 출근 '+compactDuration(early),'퇴근 후 '+compactDuration(late),record.memo].filter(Boolean).join(' · ')
+    : '저장된 기록이 없어요.';
+}
+
+function renderCalendar() {
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  const count = new Date(year,month+1,0).getDate();
+  $('calendarMonth').textContent = year+'년 '+(month+1)+'월';
+  const grid = $('calGrid');
+  grid.replaceChildren();
+  for (const day of ['일','월','화','수','목','금','토']) {
+    const label = document.createElement('span');
+    label.className = 'cal-weekday';
+    label.textContent = day;
+    grid.append(label);
+  }
+  for (let offset=0; offset<calendarMonth.getDay(); offset++) grid.append(document.createElement('span'));
+  let monthMinutes = 0;
+  for (let day=1; day<=count; day++) {
+    const date = new Date(year,month,day);
+    const key = dkey(date);
+    const record = records[key];
+    const minutes = record ? total(record) : 0;
+    monthMinutes += minutes;
+    const button = document.createElement('button');
+    button.className = 'cal-day';
+    button.textContent = day;
+    button.setAttribute('aria-label',calendarDateFormat.format(date)+(minutes ? ', 초과근무 '+compactDuration(minutes) : ''));
+    button.setAttribute('aria-pressed',String(key===calendarDay));
+    if (key===today()) button.setAttribute('aria-current','date');
+    if (record) button.classList.add('has-record');
+    if (minutes) {
+      button.classList.add('has-overtime');
+      const value = document.createElement('small');
+      const hours = Math.floor(minutes/60);
+      value.textContent = hours ? hours+'h'+(minutes%60 ? ' '+minutes%60+'m' : '') : minutes+'m';
+      button.append(value);
+    }
+    button.onclick = () => {
+      grid.querySelector('[aria-pressed=true]')?.setAttribute('aria-pressed','false');
+      button.setAttribute('aria-pressed','true');
+      calendarDay = key;
+      calendarDetail(key);
+    };
+    grid.append(button);
+  }
+  $('calendarTotal').textContent = '월 초과근무 '+compactDuration(monthMinutes);
+  calendarDetail(calendarDay);
+}
+
+function changeMonth(offset) {
+  calendarMonth = new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+offset,1);
+  calendarDay = dkey(calendarMonth);
+  if (today().startsWith(calendarDay.slice(0,7))) calendarDay = today();
+  renderCalendar();
+}
+
+function showTab(calendar) {
+  $('recordPanel').hidden = calendar;
+  $('calendarPanel').hidden = !calendar;
+  for (const [id,selected] of [['recordTab',!calendar],['calendarTab',calendar]]) {
+    $(id).setAttribute('aria-selected',String(selected));
+    $(id).tabIndex = selected ? 0 : -1;
+  }
+  if (calendar) renderCalendar();
+}
+
+$('calendarTab').onclick = () => showTab(true);
+$('recordTab').onclick = () => showTab(false);
+for (const id of ['calendarTab','recordTab']) {
+  $(id).onkeydown = event => {
+    if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    showTab(id==='recordTab');
+    $(id==='recordTab' ? 'calendarTab' : 'recordTab').focus();
+  };
+}
+$('prevMonth').onclick = () => changeMonth(-1);
+$('nextMonth').onclick = () => changeMonth(1);
+$('editCalendarDay').onclick = () => {
+  loadDate(calendarDay);
+  showTab(false);
+  dateInput.focus();
+};
 function exportRows() {
   const f=$('fromDate').value,t=$('toDate').value;
   const entries=Object.entries(records).filter(([k])=>(!f||k>=f)&&(!t||k<=t)).sort(([a],[b])=>a.localeCompare(b));
