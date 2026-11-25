@@ -30,7 +30,7 @@ workflows:
         BUNDLE_ID: com.kyeore.overtimetracker
         XCODE_WORKSPACE: App.xcworkspace
         XCODE_SCHEME: App
-        APP_STORE_APP_ID: "REPLACE_WITH_ASC_APP_ID"
+        APP_STORE_APP_ID: "6839007688"
     scripts:
       - name: 의존성 설치
         script: |
