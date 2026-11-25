@@ -77,9 +77,9 @@ def main():
     cm = read('codemagic.yaml')
     check('codemagic: 번들 ID', 'com.kyeore.overtimetracker' in cm)
     check('codemagic: ASC 앱 ID', 'APP_STORE_APP_ID: "6839007688"' in cm)
-    check('codemagic: 내부 테스트 그룹 배포 / App Store 제출 안 함',
-          'beta_groups:' in cm and '퇴근했니 내부 테스트' in cm and 'submit_to_app_store: false' in cm
-          and 'submit_to_testflight: false' in cm)
+    check('codemagic: TestFlight 업로드 / 외부 심사·App Store 제출 안 함',
+          'submit_to_app_store: false' in cm and 'submit_to_testflight: false' in cm
+          and 'beta_groups:' not in cm)
     check('codemagic: 배포 서명 타입', 'distribution_type: app_store' in cm)
     check('codemagic: 두 워크플로(ios-release, ios-check)',
           'ios-release:' in cm and 'ios-check:' in cm)
