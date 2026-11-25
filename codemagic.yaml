@@ -53,10 +53,15 @@ workflows:
           set -e
           cd ios/App
           if [ -n "${BUILD_NUMBER:-}" ]; then
-            agvtool new-version -all "$BUILD_NUMBER"
+            BUILD="$BUILD_NUMBER"
           else
-            agvtool new-version -all "$(date +%Y%m%d%H%M)"
+            BUILD="$(date -u +%Y%m%d%H%M)"
           fi
+          # Info.plist 에 리터럴로 넣어야 확실히 반영된다(agvtool 은 프로젝트 설정만 바꿈).
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" App/Info.plist
+          agvtool new-version -all "$BUILD" >/dev/null 2>&1 || true
+          echo "CFBundleVersion=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' App/Info.plist)"
+          echo "CFBundleShortVersionString=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' App/Info.plist)"
 
       - name: IPA 빌드
         script: |
