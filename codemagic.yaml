@@ -78,8 +78,12 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        # 내부 테스트만 한다. upload 는 Publishing 단계에서 그대로 수행되고,
+        # submit_to_testflight=false 로 두면 외부 테스터용 '베타 심사 제출'(Test Information 필요)을 시도하지 않는다.
+        submit_to_testflight: false
         submit_to_app_store: false
+        beta_groups:
+          - 퇴근했니 내부 테스트
 
   ios-check:
     name: 퇴근했니? iOS (시뮬레이터 빌드 확인 · 서명 없음)
