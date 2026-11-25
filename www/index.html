@@ -1,0 +1,776 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2a2118"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="manifest.webmanifest"><title>퇴근했니?</title>
+<style>
+body{margin:0;background:#f6efe2;color:#2a2118;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}.wrap{max-width:720px;margin:auto;padding:14px}.card{background:#fff;border:1px solid #e8dac0;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 10px 28px rgba(17,24,39,.07)}h1{margin:0;font-size:26px}.sub,.muted{color:#6b7280;font-size:13px}.hero{background:linear-gradient(135deg,#2a2118,#374151);color:#fff;border-radius:18px;padding:16px;margin:12px 0}.big{font-size:34px;font-weight:800;margin:4px 0}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field{margin-bottom:10px}label{display:block;color:#6b7280;font-size:12px;margin-bottom:5px}input,textarea,button{font:inherit}input,textarea{width:100%;box-sizing:border-box;border:1px solid #e8dac0;border-radius:12px;padding:11px;background:#fff}textarea{min-height:72px}button{border:0;border-radius:12px;padding:12px 14px;font-weight:700}.primary{background:#2a2118;color:#fff}.secondary{background:#eeeae0}.danger{background:#fee2e2;color:#991b1b}.quick{width:100%;font-size:18px;padding:15px;background:#2a2118;color:#fff}.btns{display:flex;gap:8px;flex-wrap:wrap}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f8f6f0;border:1px solid #e8dac0;border-radius:14px;padding:10px}.stat b{display:block;font-size:18px;margin-top:5px}.item{padding:11px 0;border-bottom:1px solid #e8dac0;display:grid;grid-template-columns:86px 1fr auto;gap:8px}.pill{display:inline-block;background:#f3f4f6;border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700}.preview{white-space:pre-wrap;background:#f8f6f0;border:1px solid #e8dac0;border-radius:12px;padding:11px;font-size:12px;overflow:auto;max-height:240px}@media(max-width:600px){.row{grid-template-columns:1fr}.item{grid-template-columns:78px 1fr}.item button{grid-column:1/-1}}
+
+.wrap{padding:24px 16px max(24px,env(safe-area-inset-bottom))}
+.card{background:#fffdf9;padding:clamp(16px,4vw,26px);box-shadow:0 8px 24px #3232250c}
+h1{font-size:32px;letter-spacing:-.045em}h2{font-size:18px;margin:0 0 16px;letter-spacing:-.035em}
+.hero{background:linear-gradient(125deg,#2a2118,#344a40);padding:22px;margin:20px 0;color:#fffdf6}
+.hero .muted{color:#e4dbc0}.big{letter-spacing:-.05em}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.quick{font-size:15px;color:#fffdf7}.quick.out{background:#e9dfc7;color:#282e27}
+.split{display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid #ffffff35;padding-top:12px;margin-top:14px;font-size:13px}
+.split b{color:#f4e6bd;margin-left:4px}
+.field{min-width:0}input,textarea{font-size:16px;color:inherit}
+:focus-visible{outline:2px solid #806124;outline-offset:2px}
+button{cursor:pointer}#feedback{min-height:1.3em;margin:8px 0;font-size:13px;color:#3b5146}
+@media(max-width:370px){.quick{padding-inline:6px}}
+
+body{background:radial-gradient(ellipse at top,#fff9e9,#f0e6d5 60%)}
+.card{border-color:#e2cda5;background:#fffcf5;box-shadow:0 12px 34px #50381812}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.brand h1{font-size:clamp(24px,7vw,34px)}
+.brand span{color:#78541c;font-size:12px;white-space:nowrap}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 39%;gap:10px;align-items:center;margin:0 0 16px;background:#211b15;border:1px solid #af8950;box-shadow:inset 0 0 0 4px #ffffff0d;color:#fbecce;padding:clamp(13px,4vw,25px)}
+.mascot{display:block;width:100%;max-height:210px;object-fit:cover;aspect-ratio:1/1;border-radius:14px;object-position:center}
+.big{font-size:clamp(23px,6vw,36px);color:#ffe4a2;font-variant-numeric:tabular-nums}
+.hero .split{display:grid;gap:4px}
+.quick.out{background:linear-gradient(125deg,#ebd09b,#d8b571);color:#2b2115}
+.quick,.primary{background:#32271c;color:#fff5df}.secondary{background:#f2e6cb;color:#432e13}
+.daily-card{border:1px solid #ead8b5;background:#fffdf8;border-radius:16px;padding:12px;margin-top:9px}
+.daily-card.today{background:#fcf4e1;border-color:#d7b879;margin:0 0 15px}
+.daily-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.daily-head button{padding:7px 11px;font-size:12px}.daily-card dl{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:5px;margin:0}
+.daily-card dl div{padding:8px 5px;border-radius:9px;background:#f5eddf;text-align:center;min-width:0}
+.daily-card dl div:last-child{background:#efdfb7}
+.daily-card dt{color:#705c3d;font-size:11px;margin-bottom:4px}.daily-card dd{font-size:clamp(12px,3.4vw,18px);font-weight:750;margin:0;font-variant-numeric:tabular-nums}
+.daily-details{color:#6d5837;margin:8px 0 0;font-size:12px;overflow-wrap:anywhere}
+@media(max-width:360px){.brand span{white-space:normal}.hero{grid-template-columns:minmax(0,1fr) 33%}}
+
+.app-nav{display:flex;gap:6px;padding:5px;margin:0 0 12px;border:1px solid #e2cda5;border-radius:14px;background:#fffaf0}
+.app-nav button{flex:1;background:transparent;color:#644b29}
+.app-nav [aria-selected=true]{background:#32271c;color:#fff5df}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px}
+.cal-head h2{margin:0}.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-bottom:10px}
+.cal-weekday{text-align:center;font-size:12px;color:#705c3d;padding:5px 0}
+.cal-day{min-height:46px;padding:4px 0;background:#f7f0e5;color:#2a2118;font-weight:650;font-size:14px;border:1px solid transparent}
+.cal-day.has-record{background:#efe5d5}.cal-day.has-overtime{background:#f0d494;color:#3d290f}
+.cal-day[aria-current=date]{border-color:#996b31}.cal-day[aria-pressed=true]{background:#32271c;color:#fff5df}
+.cal-day small{display:block;font-size:9px;white-space:nowrap;margin-top:2px}
+.cal-month{font-size:13px;color:#705c3d;margin:10px 0 16px}
+
+/* --- iOS 앱 추가분: 알림 배너, 권한 상태, 가져오기/백업 --- */
+.action-banner{margin:0 0 14px;border:1px solid #d7b879;background:#fff6df;border-radius:16px;padding:14px;box-shadow:0 8px 20px #7a5a1f14}
+.action-banner h3{margin:0 0 6px;font-size:16px;letter-spacing:-.02em}
+.action-banner p{margin:0 0 10px;font-size:13px;color:#6d5837;line-height:1.45}
+.action-banner .btns button{padding:9px 12px;font-size:13px}
+.perm{display:grid;gap:6px;font-size:13px;margin:12px 0}
+.perm div{display:flex;justify-content:space-between;gap:8px;background:#f8f6f0;border-radius:10px;padding:9px 11px}
+.perm b{font-weight:700}
+.ok{color:#166534}.warn{color:#b45309}.bad{color:#b91c1c}
+.import-result{font-size:13px;margin-top:10px;white-space:pre-wrap;line-height:1.5}
+input[type=file]{font-size:14px;padding:10px;border:1px dashed #d7b879;border-radius:12px;background:#fffdf7;width:100%}
+input[type=range]{-webkit-appearance:none;appearance:none;height:30px;background:transparent;padding:0}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:99px;background:#eadcc0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:99px;background:#32271c;border:3px solid #ffe4a2;margin-top:-9px}
+details summary{cursor:pointer;font-weight:700;color:#432e13;font-size:14px;padding:6px 0}
+.check{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#432e13;margin:10px 0}
+.check input{width:22px;height:22px;flex:0 0 auto;margin:0;accent-color:#32271c}
+.hint-box{background:#f6f1e3;border:1px solid #e6d6b3;border-radius:12px;padding:11px;font-size:12px;color:#6d5837;line-height:1.5;margin-top:10px}
+.tag{display:inline-block;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;background:#efe5d5;color:#78541c;margin-left:6px}
+</style></head><body><div class="wrap">
+<div class="app-nav" role="tablist" aria-label="근무 기록 보기">
+  <button id="recordTab" role="tab" aria-selected="true" aria-controls="recordPanel">출퇴근</button>
+  <button id="calendarTab" role="tab" aria-selected="false" aria-controls="calendarPanel" tabindex="-1">달력</button>
+  <button id="settingsTab" role="tab" aria-selected="false" aria-controls="settingsPanel" tabindex="-1">설정</button>
+</div>
+<div id="recordPanel" role="tabpanel" aria-labelledby="recordTab">
+<section class="card">
+<header class="brand"><h1>퇴근했니?</h1><span>출퇴근 기록</span></header>
+<div id="actionBanner" class="action-banner" hidden role="alert">
+  <h3 id="bannerTitle">알림</h3>
+  <p id="bannerMsg"></p>
+  <div class="btns"><button class="primary" id="bannerApply" hidden>알림 시각으로 변경</button><button class="secondary" id="bannerClose">닫기</button></div>
+</div>
+<div class="hero"><div>
+  <div id="heroDate" class="muted"></div>
+  <div class="muted">총 초과근무</div>
+  <div id="heroOT" class="big"></div>
+  <div class="split"><span>조기 출근 <b id="earlyOT"></b></span><span>퇴근 후 <b id="lateOT"></b></span></div>
+</div><img class="mascot" src="office-capybara.webp" alt="금빛 넥타이를 맨 직장인 카피바라" width="400" height="400"></div>
+<div class="quick-actions"><button class="quick" id="quickStart">지금 출근</button><button class="quick out" id="quickBtn">지금 퇴근</button></div>
+<p id="feedback" role="status"></p>
+<article class="daily-card today">
+  <div class="daily-head"><strong id="selectedSummaryDate">오늘의 기록</strong></div>
+  <dl><div><dt>출근</dt><dd id="dailyIn">—</dd></div><div><dt>퇴근</dt><dd id="dailyOut">—</dd></div><div><dt>초과근무</dt><dd id="dailyTotal">0분</dd></div></dl>
+</article>
+<h2>근무 기록</h2>
+<div class="field"><label for="dateInput">날짜</label><input id="dateInput" type="date"></div>
+<div class="row"><div class="field"><label for="startTime">실제 출근</label><input id="startTime" type="time"></div><div class="field"><label for="actualEnd">실제 퇴근</label><input id="actualEnd" type="time"></div></div>
+<div class="row"><div class="field"><label for="regularStart">정규 출근</label><input id="regularStart" type="time"></div><div class="field"><label for="regularEnd">정규 퇴근</label><input id="regularEnd" type="time"></div></div>
+<div class="field"><label for="memo">메모</label><textarea id="memo" placeholder="예: 월말 마감, 긴급 대응"></textarea></div>
+<div class="btns"><button class="primary" id="saveBtn">기록 저장</button><button class="danger" id="deleteBtn">삭제</button></div></section>
+
+<section class="card"><h2>이번 달</h2><div class="stats"><div class="stat"><span class="muted">총 초과근무</span><b id="monthSum">0h</b></div><div class="stat"><span class="muted">초과근무 일수</span><b id="monthDays">0일</b></div><div class="stat"><span class="muted">평균</span><b id="monthAvg">0h</b></div></div></section>
+
+<section class="card"><h2>날짜별 근무 기록</h2><div id="recentList"></div></section>
+<section class="card"><h2>엑셀로 보내기</h2><div class="row"><div class="field"><label>시작일</label><input id="fromDate" type="date"></div><div class="field"><label>종료일</label><input id="toDate" type="date"></div></div><div class="btns"><button class="primary" id="copyBtn">엑셀 붙여넣기용 복사</button><button class="secondary" id="shareBtn">공유하기</button><button class="secondary" id="csvBtn">CSV 저장</button><button class="secondary" id="jsonBtn">JSON 백업</button></div><div class="muted" style="margin:10px 0">Excel 첫 셀에 붙여넣으면 열/행이 자동으로 나뉩니다.</div><div id="preview" class="preview"></div></section>
+</div>
+
+<section id="calendarPanel" role="tabpanel" aria-labelledby="calendarTab" class="card" hidden>
+  <div class="cal-head"><button class="secondary" id="prevMonth" aria-label="이전 달">‹</button><h2 id="calendarMonth" aria-live="polite"></h2><button class="secondary" id="nextMonth" aria-label="다음 달">›</button></div>
+  <div id="calGrid" class="cal-grid" role="group" aria-label="날짜 선택"></div>
+  <p id="calendarTotal" class="cal-month"></p>
+  <article class="daily-card today" id="calendarDetail" aria-live="polite">
+    <div class="daily-head"><strong id="calendarDate"></strong><button class="secondary" id="editCalendarDay"></button></div>
+    <dl><div><dt>출근</dt><dd id="calendarIn"></dd></div><div><dt>퇴근</dt><dd id="calendarOut"></dd></div><div><dt>초과근무</dt><dd id="calendarOT"></dd></div></dl>
+    <p class="daily-details" id="calendarNote"></p>
+  </article>
+</section>
+
+<section id="settingsPanel" role="tabpanel" aria-labelledby="settingsTab" hidden>
+
+<section class="card">
+  <h2>회사 위치 · 자동 알림<span id="monitorTag" class="tag" hidden>감시 중</span></h2>
+  <div id="permStatus" class="perm"></div>
+  <div class="btns"><button class="secondary" id="askLocation">위치 권한 요청</button><button class="secondary" id="askNotif">알림 권한 요청</button><button class="secondary" id="refreshStatus">상태 새로고침</button></div>
+  <div class="hint-box" id="permHint">잠금 화면에서 알림을 받으려면 위치 권한을 <b>항상 허용</b>, 알림을 허용으로 설정해 주세요. 위치와 기록은 이 기기에만 저장되고 서버로 보내지 않아요.</div>
+  <hr style="border:0;border-top:1px solid #ead8b5;margin:16px 0">
+  <div class="field"><label for="companyName">회사 이름/메모</label><input id="companyName" placeholder="예: 램리서치 지곡동" autocomplete="off"></div>
+  <div class="row"><div class="field"><label for="companyLat">위도</label><input id="companyLat" type="number" step="0.000001" inputmode="decimal" placeholder="37.241600"></div>
+    <div class="field"><label for="companyLon">경도</label><input id="companyLon" type="number" step="0.000001" inputmode="decimal" placeholder="127.141400"></div></div>
+  <div class="field"><label for="radius">감지 반경 <b id="radiusLabel">200m</b></label><input id="radius" type="range" min="100" max="500" step="50" value="200"></div>
+  <div class="btns"><button class="secondary" id="useCurrent">현재 위치로 저장</button><button class="primary" id="saveGeofence">위치 저장 · 감시 시작</button><button class="secondary" id="stopGeofence">감시 중지</button></div>
+  <p class="muted" id="geoHint" style="margin:10px 0 0">회사 반경에 들어오면 "출근 기록할까요?", 나가면 "퇴근 기록할까요?" 알림이 잠금 화면에 떠요.</p>
+</section>
+
+<section class="card">
+  <h2>알림 테스트</h2>
+  <div class="btns"><button class="secondary" id="testIn">출근 알림 테스트</button><button class="secondary" id="testOut">퇴근 알림 테스트</button></div>
+  <p class="muted" style="margin:10px 0 0">5초 뒤 알림이 떠요. 잠금 화면에서 알림을 눌러 보면 알림 시각이 입력칸에 채워지고, 저장을 눌러야 기록됩니다.</p>
+</section>
+
+<section class="card">
+  <h2>기존 기록 가져오기</h2>
+  <p class="muted">브라우저 웹앱에서 <b>CSV 저장</b>한 파일이나 이 앱의 <b>JSON 백업</b>을 불러올 수 있어요. 기존 기록은 자동으로 덮어쓰지 않아요.</p>
+  <div class="field"><label for="importFile">파일 선택 (CSV · JSON)</label><input id="importFile" type="file" accept=".csv,.json,.txt,text/csv,application/json"></div>
+  <details><summary>또는 표 붙여넣기 (엑셀에서 복사)</summary>
+    <div class="field"><label for="importText">CSV/엑셀 표 내용</label><textarea id="importText" placeholder="날짜,정규 출근,실제 출근,정규 퇴근,실제 퇴근,조기 출근(분),퇴근 후(분),총 초과근무(분),메모"></textarea></div>
+    <button class="secondary" id="importPaste">붙여넣은 내용 가져오기</button>
+  </details>
+  <label class="check"><input id="importOverwrite" type="checkbox"> 같은 날짜의 기존 기록도 가져온 값으로 덮어쓰기</label>
+  <div id="importResult" class="import-result"></div>
+  <div class="hint-box">브라우저 웹앱(sangja8412-lang.github.io/overtime-tracker)의 <b>CSV 저장</b> 버튼으로 내려받은 파일을 아이폰 '파일' 앱에 저장한 뒤 위에서 선택하세요.</div>
+</section>
+
+<section class="card"><h2>기본 시간</h2><div class="row"><div class="field"><label>기본 정규 출근시간</label><input id="defaultStart" type="time"></div><div class="field"><label>기본 정규 퇴근시간</label><input id="defaultEnd" type="time"></div></div><button class="secondary" id="saveSettings">설정 저장</button></section>
+
+<section class="card"><h2>앱 정보</h2><p class="muted" style="margin:0;line-height:1.6">퇴근했니? iOS <span id="appVersion">1.0</span><br>모든 출퇴근 기록과 회사 위치는 이 기기(앱 저장 공간)에만 저장됩니다. 서버·지도 API를 쓰지 않습니다.</p></section>
+</section>
+</div>
+
+<script>
+const KEY='ot.local.records',SKEY='ot.local.settings';
+let records=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('ot.v2.records')||localStorage.getItem('overtimeTracker.v1.records')||'{}');
+let settings=JSON.parse(localStorage.getItem(SKEY)||'{"startTime":"08:30","regularEnd":"17:30"}');
+const $=x=>document.getElementById(x),pad=n=>String(n).padStart(2,'0'),dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>dkey(new Date()),min=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m},fmt=m=>`${Math.floor((m||0)/60)}시간 ${(m||0)%60}분`,short=m=>{if(!m)return'0h';let h=Math.floor(m/60),mm=m%60;return mm?`${h}h ${mm}m`:`${h}h`},save=()=>localStorage.setItem(KEY,JSON.stringify(records));
+const dateInput=$('dateInput'), regularStart=$('regularStart'), regularEnd=$('regularEnd');
+const startTime=$('startTime'), actualEnd=$('actualEnd'), memo=$('memo');
+
+/* ---------- 네이티브 브리지 ---------- */
+const isNative=()=>!!(window.Capacitor&&typeof Capacitor.isNativePlatform==='function'&&Capacitor.isNativePlatform());
+function plugin(name){try{return (window.Capacitor&&Capacitor.Plugins)?Capacitor.Plugins[name]:null}catch(e){return null}}
+
+function overtime(r) {
+  if (r.regularStart === undefined) return {early: 0, late: r.overtime || 0};
+  const start = min(r.startTime);
+  const end = min(r.actualEnd);
+  const scheduledStart = min(r.regularStart);
+  const scheduledEnd = min(r.regularEnd);
+  return {
+    early: start === null || scheduledStart === null ? 0 : Math.max(0, Math.min(end ?? scheduledStart, scheduledStart) - start),
+    late: end === null || scheduledEnd === null ? 0 : Math.max(0, end - Math.max(start ?? scheduledEnd, scheduledEnd))
+  };
+}
+function total(r) { const {early, late} = overtime(r); return early + late; }
+function formRecord() {
+  return {
+    startTime:startTime.value, actualEnd:actualEnd.value, regularStart:regularStart.value,
+    regularEnd:regularEnd.value, memo:memo.value.trim()
+  };
+}
+function loadDate(k) {
+  const r = records[k];
+  dateInput.value = k;
+  regularStart.value = r?.regularStart || r?.startTime || settings.startTime;
+  regularEnd.value = r?.regularEnd || settings.regularEnd;
+  startTime.value = r?.regularStart !== undefined ? r.startTime || '' : '';
+  actualEnd.value = r?.actualEnd || '';
+  memo.value = r?.memo || '';
+  $('feedback').textContent = '';
+  hero();
+}
+function hero() {
+  const d = new Date((dateInput.value || today()) + 'T00:00:00');
+  const {early,late} = overtime(formRecord());
+  $('heroDate').textContent = new Intl.DateTimeFormat('ko-KR',{dateStyle:'full'}).format(d);
+  $('heroOT').textContent = fmt(early + late);
+  $('earlyOT').textContent = fmt(early);
+  $('lateOT').textContent = fmt(late);
+  $('selectedSummaryDate').textContent = dkey(d) === today() ? '오늘의 근무 기록' : new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'short'}).format(d);
+  $('dailyIn').textContent = startTime.value || '—';
+  $('dailyOut').textContent = actualEnd.value || '—';
+  $('dailyTotal').textContent = compactDuration(early + late);
+}
+function monthStats() {
+  const prefix = today().slice(0,7);
+  const totals = Object.entries(records).filter(([k]) => k.startsWith(prefix)).map(([,r]) => total(r)).filter(Boolean);
+  const sum = totals.reduce((a,b) => a+b,0);
+  $('monthSum').textContent = short(sum);
+  $('monthDays').textContent = totals.length + '일';
+  $('monthAvg').textContent = short(totals.length ? Math.round(sum/totals.length) : 0);
+}
+function compactDuration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return remainder + '분';
+  return hours + '시간' + (remainder ? ' ' + remainder + '분' : '');
+}
+function recent() {
+  const list = $('recentList');
+  list.replaceChildren();
+  const entries = Object.entries(records).sort(([a],[b]) => b.localeCompare(a));
+  if (!entries.length) { list.textContent = '저장한 출퇴근 기록이 여기에 표시돼요.'; return; }
+  const dateFormat = new Intl.DateTimeFormat('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  for (const [date,r] of entries) {
+    const item = document.createElement('article');
+    item.className = 'daily-card';
+    item.innerHTML = '<div class="daily-head"><strong></strong><button class="secondary">열기</button></div><dl><div><dt>출근</dt><dd></dd></div><div><dt>퇴근</dt><dd></dd></div><div><dt>초과근무</dt><dd></dd></div></dl><p class="daily-details"></p>';
+    const label = dateFormat.format(new Date(date + 'T00:00:00'));
+    item.querySelector('strong').textContent = label;
+    const [arrival, departure, duration] = item.querySelectorAll('dd');
+    arrival.textContent = r.regularStart && r.startTime || '—';
+    departure.textContent = r.actualEnd || '—';
+    const {early,late} = overtime(r);
+    duration.textContent = compactDuration(early+late);
+    item.querySelector('p').textContent = ['조기 출근 '+compactDuration(early),'퇴근 후 '+compactDuration(late),r.memo].filter(Boolean).join(' · ');
+    const button = item.querySelector('button');
+    button.setAttribute('aria-label', label + ' 근무 기록 열기');
+    button.onclick = () => {loadDate(date);scrollTo({top:0,behavior:'smooth'});};
+    list.appendChild(item);
+  }
+}
+const calendarDateFormat = new Intl.DateTimeFormat('ko-KR',{dateStyle:'full'});
+let calendarDay = today();
+let calendarMonth = new Date(calendarDay.slice(0,7)+'-01T00:00:00');
+
+function calendarDetail(date) {
+  const record = records[date];
+  $('calendarDate').textContent = calendarDateFormat.format(new Date(date+'T00:00:00'));
+  $('calendarIn').textContent = record?.regularStart && record.startTime || '—';
+  $('calendarOut').textContent = record?.actualEnd || '—';
+  $('calendarOT').textContent = record ? compactDuration(total(record)) : '—';
+  $('editCalendarDay').textContent = record ? '기록 수정' : '기록 추가';
+  const {early,late} = record ? overtime(record) : {};
+  $('calendarNote').textContent = record
+    ? ['조기 출근 '+compactDuration(early),'퇴근 후 '+compactDuration(late),record.memo].filter(Boolean).join(' · ')
+    : '저장된 기록이 없어요.';
+}
+
+function renderCalendar() {
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  const count = new Date(year,month+1,0).getDate();
+  $('calendarMonth').textContent = year+'년 '+(month+1)+'월';
+  const grid = $('calGrid');
+  grid.replaceChildren();
+  for (const day of ['일','월','화','수','목','금','토']) {
+    const label = document.createElement('span');
+    label.className = 'cal-weekday';
+    label.textContent = day;
+    grid.append(label);
+  }
+  for (let offset=0; offset<calendarMonth.getDay(); offset++) grid.append(document.createElement('span'));
+  let monthMinutes = 0;
+  for (let day=1; day<=count; day++) {
+    const date = new Date(year,month,day);
+    const key = dkey(date);
+    const record = records[key];
+    const minutes = record ? total(record) : 0;
+    monthMinutes += minutes;
+    const button = document.createElement('button');
+    button.className = 'cal-day';
+    button.textContent = day;
+    button.setAttribute('aria-label',calendarDateFormat.format(date)+(minutes ? ', 초과근무 '+compactDuration(minutes) : ''));
+    button.setAttribute('aria-pressed',String(key===calendarDay));
+    if (key===today()) button.setAttribute('aria-current','date');
+    if (record) button.classList.add('has-record');
+    if (minutes) {
+      button.classList.add('has-overtime');
+      const value = document.createElement('small');
+      const hours = Math.floor(minutes/60);
+      value.textContent = hours ? hours+'h'+(minutes%60 ? ' '+minutes%60+'m' : '') : minutes+'m';
+      button.append(value);
+    }
+    button.onclick = () => {
+      grid.querySelector('[aria-pressed=true]')?.setAttribute('aria-pressed','false');
+      button.setAttribute('aria-pressed','true');
+      calendarDay = key;
+      calendarDetail(key);
+    };
+    grid.append(button);
+  }
+  $('calendarTotal').textContent = '월 초과근무 '+compactDuration(monthMinutes);
+  calendarDetail(calendarDay);
+}
+
+function changeMonth(offset) {
+  calendarMonth = new Date(calendarMonth.getFullYear(),calendarMonth.getMonth()+offset,1);
+  calendarDay = dkey(calendarMonth);
+  if (today().startsWith(calendarDay.slice(0,7))) calendarDay = today();
+  renderCalendar();
+}
+
+function showTab(name) {
+  const map = {record:'recordPanel', calendar:'calendarPanel', settings:'settingsPanel'};
+  for (const [key,id] of Object.entries(map)) $(id).hidden = key !== name;
+  for (const [key,id] of Object.entries({record:'recordTab',calendar:'calendarTab',settings:'settingsTab'})) {
+    const selected = key === name;
+    $(id).setAttribute('aria-selected',String(selected));
+    $(id).tabIndex = selected ? 0 : -1;
+  }
+  if (name === 'calendar') renderCalendar();
+  if (name === 'settings') refreshStatus();
+}
+
+$('calendarTab').onclick = () => showTab('calendar');
+$('recordTab').onclick = () => showTab('record');
+$('settingsTab').onclick = () => showTab('settings');
+for (const id of ['calendarTab','recordTab','settingsTab']) {
+  $(id).onkeydown = event => {
+    const order = ['recordTab','calendarTab','settingsTab'];
+    if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const next = order[(order.indexOf(id) + (event.key==='ArrowRight' ? 1 : order.length-1)) % order.length];
+    $(next).click();
+    $(next).focus();
+  };
+}
+$('prevMonth').onclick = () => changeMonth(-1);
+$('nextMonth').onclick = () => changeMonth(1);
+$('editCalendarDay').onclick = () => {
+  loadDate(calendarDay);
+  showTab('record');
+  dateInput.focus();
+};
+function exportRows() {
+  const f=$('fromDate').value,t=$('toDate').value;
+  const entries=Object.entries(records).filter(([k])=>(!f||k>=f)&&(!t||k<=t)).sort(([a],[b])=>a.localeCompare(b));
+  return [['날짜','정규 출근','실제 출근','정규 퇴근','실제 퇴근','조기 출근(분)','퇴근 후(분)','총 초과근무(분)','메모'],
+    ...entries.map(([k,r])=>{
+      const {early,late}=overtime(r);
+      return [k,r.regularStart ?? r.startTime ?? '',r.regularStart === undefined ? '' : r.startTime,r.regularEnd || '',r.actualEnd || '',early,late,early+late,r.memo || ''];
+    })];
+}
+function tsv() { return exportRows().map(row=>row.map(v=>String(v).replace(/[\t\r\n]/g,' ')).join('\t')).join('\n'); }
+function csv() { return exportRows().map(row=>row.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'); }
+function preview() { $('preview').textContent=tsv(); }
+function refresh() { monthStats(); recent(); preview(); hero(); }
+
+function persist(message) {
+  const k=dateInput.value;
+  const r=formRecord();
+  const feedback=$('feedback');
+  if (!k || !r.regularStart || !r.regularEnd || (!r.startTime && !r.actualEnd)) {
+    feedback.textContent='날짜와 정규 시간, 실제 출근 또는 퇴근 시간을 입력해 주세요.';
+    return false;
+  }
+  if (r.regularStart > r.regularEnd || (r.startTime && r.actualEnd && r.startTime > r.actualEnd)) {
+    feedback.textContent='같은 날 기준으로 출근 시간이 퇴근 시간보다 앞서야 해요.';
+    return false;
+  }
+  records[k]={...r,overtime:total(r),updatedAt:new Date().toISOString()};
+  save();
+  refresh();
+  feedback.textContent=message;
+  if (pendingAction) {
+    hideBanner();
+    const P = plugin('GeofenceCommute');
+    if (P && P.clearDelivered) { try { P.clearDelivered(); } catch(e) {} }
+  }
+  return true;
+}
+function quickRecord(input,label) {
+  const n=new Date();
+  const k=dkey(n);
+  if (dateInput.value !== k) loadDate(k);
+  const time=pad(n.getHours())+':'+pad(n.getMinutes());
+  const previous=input.value;
+  if (previous && previous !== time && !confirm(previous+' '+label+' 시간을 '+time+'으로 변경할까요?')) return;
+  input.value=time;
+  if (!persist(time+' '+label+' 기록을 저장했어요.')) {input.value=previous;hero();}
+}
+$('quickStart').onclick=()=>quickRecord(startTime,'출근');
+$('quickBtn').onclick=()=>quickRecord(actualEnd,'퇴근');
+$('saveBtn').onclick=()=>persist('기록을 저장했어요.');
+$('deleteBtn').onclick=()=>{const k=dateInput.value;if(records[k]&&confirm('삭제할까요?')){delete records[k];save();loadDate(k);refresh();}};
+dateInput.onchange=()=>{if(dateInput.value) loadDate(dateInput.value);};
+for(const input of [startTime,actualEnd,regularStart,regularEnd]) input.oninput=hero;
+$('fromDate').onchange=preview;$('toDate').onchange=preview;
+
+async function copyText(text){
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; } } catch(e) {}
+  try {
+    const ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');
+    ta.style.position='fixed';ta.style.top='-1000px';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,text.length);
+    const ok=document.execCommand('copy');ta.remove();return ok;
+  } catch(e) { return false; }
+}
+function fileStamp(){ const n=new Date(); return `${n.getFullYear()}${pad(n.getMonth()+1)}${pad(n.getDate())}-${pad(n.getHours())}${pad(n.getMinutes())}`; }
+async function saveFile(name,data,shareTitle){
+  if (isNative()) {
+    const F=plugin('Filesystem'), S=plugin('Share');
+    if (F&&S) {
+      const res=await F.writeFile({path:name,data,directory:'CACHE',encoding:'utf8'});
+      const uri=res.uri||(await F.getUri({path:name,directory:'CACHE'})).uri;
+      await S.share({title:shareTitle||name,url:uri,dialogTitle:'저장 또는 보내기'});
+      return true;
+    }
+  }
+  let blob,type='text/plain;charset=utf-8';
+  if (name.endsWith('.csv')) type='text/csv;charset=utf-8';
+  if (name.endsWith('.json')) type='application/json;charset=utf-8';
+  blob=new Blob(['\uFEFF'+data],{type});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  return true;
+}
+
+$('copyBtn').onclick=async()=>{
+  const ok=await copyText(tsv());
+  alert(ok?'복사했어요. Excel 첫 셀에 붙여넣으면 됩니다.':'자동 복사가 막혔어요. 아래 미리보기 내용을 길게 눌러 복사해 주세요.');
+};
+$('shareBtn').onclick=async()=>{
+  const text=tsv();
+  if (isNative()) { await saveFile(`야근기록-${fileStamp()}.csv`,'\uFEFF'+csv(),'야근 기록'); return; }
+  if (navigator.share) { try { await navigator.share({title:'야근 기록',text}); return; } catch(e) {} }
+  const ok=await copyText(text);
+  alert(ok?'공유 기능이 없어 대신 복사했어요.':'공유도 복사도 막혔어요. 미리보기 내용을 길게 눌러 복사해 주세요.');
+};
+$('csvBtn').onclick=async()=>{
+  try { await saveFile(`야근기록-${fileStamp()}.csv`,'\uFEFF'+csv(),'야근 기록 CSV'); }
+  catch(e) { alert('파일을 만들지 못했어요: '+e.message); }
+};
+$('jsonBtn').onclick=async()=>{
+  const backup={app:'overtime-tracker',version:1,exportedAt:new Date().toISOString(),settings,records};
+  try { await saveFile(`퇴근했니-백업-${fileStamp()}.json`,JSON.stringify(backup,null,2),'퇴근했니? 백업'); }
+  catch(e) { alert('백업 파일을 만들지 못했어요: '+e.message); }
+};
+
+/* ---------- 가져오기 ---------- */
+function splitRows(text){
+  const s=text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n');
+  const delim=(s.split('\n')[0]||'').includes('\t')&&!(s.split('\n')[0]||'').includes(',')?'\t':',';
+  const rows=[];let row=[],cur='',inQ=false;
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(inQ){
+      if(c==='"'){ if(s[i+1]==='"'){cur+='"';i++;} else inQ=false; } else cur+=c;
+    } else if(c==='"') inQ=true;
+    else if(c===delim){ row.push(cur);cur=''; }
+    else if(c==='\n'){ row.push(cur);rows.push(row);row=[];cur=''; }
+    else cur+=c;
+  }
+  if(cur.length||row.length){row.push(cur);rows.push(row);}
+  return rows.filter(r=>r.some(v=>String(v).trim()!==''));
+}
+function normHead(v){ return String(v||'').replace(/[\s()\-_]/g,''); }
+function recordsFromCsv(text){
+  const rows=splitRows(text);
+  if(!rows.length) return {records:{},invalid:0,error:'파일이 비어 있어요.'};
+  let start=0,map={};
+  const header=rows[0].map(normHead);
+  const known=header.some(h=>h.includes('날짜'));
+  if(known){
+    start=1;
+    header.forEach((h,i)=>{
+      if(h.includes('날짜')) map.date=i;
+      else if(h.includes('정규출근')) map.regularStart=i;
+      else if(h.includes('실제출근')) map.startTime=i;
+      else if(h.includes('정규퇴근')) map.regularEnd=i;
+      else if(h.includes('실제퇴근')) map.actualEnd=i;
+      else if(h.includes('메모')) map.memo=i;
+    });
+  } else {
+    map={date:0,regularStart:1,startTime:2,regularEnd:3,actualEnd:4,memo:8};
+  }
+  const out={},invalid=[];
+  for(let r=start;r<rows.length;r++){
+    const row=rows[r];
+    const raw=String(row[map.date]||'').trim().replace(/[./]/g,'-');
+    const m=raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(!m){ invalid.push(raw); continue; }
+    const key=`${m[1]}-${pad(Number(m[2]))}-${pad(Number(m[3]))}`;
+    const pick=i=>String(row[i]??'').trim();
+    const hhmm=v=>{const x=v.match(/^(\d{1,2}):(\d{2})/);return x?pad(Number(x[1]))+':'+x[2]:''};
+    const rec={
+      regularStart:hhmm(pick(map.regularStart))||settings.startTime,
+      startTime:hhmm(pick(map.startTime)),
+      regularEnd:hhmm(pick(map.regularEnd))||settings.regularEnd,
+      actualEnd:hhmm(pick(map.actualEnd)),
+      memo:pick(map.memo)
+    };
+    if(map.regularStart===undefined) rec.startTime=rec.regularStart;
+    out[key]=rec;
+  }
+  return {records:out,invalid:invalid.length,error:null};
+}
+function recordsFromJson(text){
+  const data=JSON.parse(text);
+  const src=data.records||data.data||data;
+  if(!src||typeof src!=='object') throw new Error('기록을 찾지 못했어요.');
+  const out={};let invalid=0;
+  for(const [k,v] of Object.entries(src)){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k)||!v||typeof v!=='object'){ invalid++; continue; }
+    out[k]={startTime:v.startTime||'',actualEnd:v.actualEnd||'',regularStart:v.regularStart||v.startTime||settings.startTime,regularEnd:v.regularEnd||settings.regularEnd,memo:v.memo||''};
+  }
+  return {records:out,invalid,error:null};
+}
+function applyImport(parsed){
+  const overwrite=$('importOverwrite').checked;
+  let added=0,skipped=0;
+  for(const [k,r] of Object.entries(parsed.records)){
+    if(records[k]&&!overwrite){ skipped++; continue; }
+    records[k]={...r,overtime:total(r),updatedAt:new Date().toISOString()};
+    added++;
+  }
+  save();refresh();loadDate(dateInput.value||today());refresh();
+  const msg=`가져왔어요: ${added}건${skipped?` · 기존 기록이라 건너뜀: ${skipped}건`:''}${parsed.invalid?` · 형식이 맞지 않아 건너뜀: ${parsed.invalid}건`:''}`;
+  $('importResult').textContent=msg;
+  if(!added&&!skipped) $('importResult').textContent=msg+'\n가져올 수 있는 기록이 없었어요. 날짜 형식(YYYY-MM-DD)을 확인해 주세요.';
+}
+async function importText(text,label){
+  const t=String(text||'').trim();
+  if(!t){ $('importResult').textContent='가져올 내용이 없어요.'; return; }
+  try {
+    const parsed=t.startsWith('{')||t.startsWith('[')?recordsFromJson(t):recordsFromCsv(t);
+    if(parsed.error){ $('importResult').textContent=parsed.error; return; }
+    const n=Object.keys(parsed.records).length;
+    if(!n){ $('importResult').textContent=`${label||'파일'}에서 날짜가 있는 기록을 찾지 못했어요.`; return; }
+    applyImport(parsed);
+  } catch(e) {
+    $('importResult').textContent='가져오지 못했어요: '+e.message;
+  }
+}
+$('importFile').onchange=async e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(!file) return;
+  $('importResult').textContent='읽는 중…';
+  try {
+    const text=await file.text();
+    await importText(text,file.name);
+  } catch(err) {
+    $('importResult').textContent='파일을 읽지 못했어요: '+err.message;
+  }
+};
+$('importPaste').onclick=()=>importText($('importText').value,'붙여넣은 표');
+
+/* ---------- 설정: 기본 시간 ---------- */
+$('defaultStart').value=settings.startTime;$('defaultEnd').value=settings.regularEnd;
+$('saveSettings').onclick=()=>{settings={startTime:$('defaultStart').value||'08:30',regularEnd:$('defaultEnd').value||'17:30'};localStorage.setItem(SKEY,JSON.stringify(settings));alert('저장했어요.')};
+
+/* ---------- 설정: 회사 위치 · 권한 · 알림 ---------- */
+const GEO_KEY='ot.geofence.v1';
+let geofence=JSON.parse(localStorage.getItem(GEO_KEY)||'null');
+let nativeStatus=null;
+let pendingAction=null;
+
+function locLabel(v){return {always:'항상 허용',whenInUse:'앱 사용 중',denied:'거부됨',restricted:'제한됨',notDetermined:'아직 묻지 않음',unknown:'알 수 없음'}[v]||v||'-'}
+function notifLabel(v){return {granted:'허용',denied:'거부됨',notDetermined:'아직 묻지 않음',unknown:'알 수 없음'}[v]||v||'-'}
+function classFor(v){ if(['always','granted'].includes(v))return 'ok'; if(['denied','restricted'].includes(v))return 'bad'; return 'warn'; }
+
+function renderPerm(){
+  const box=$('permStatus');
+  if(!isNative()){
+    box.innerHTML='<div><span>앱 모드</span><b class="warn">웹 미리보기</b></div><div><span>위치 자동 알림</span><b class="warn">아이폰 앱에서만 동작</b></div>';
+    return;
+  }
+  const s=nativeStatus||{};
+  const monitoring = s.monitoring ? '감시 중' : '꺼짐';
+  box.innerHTML=
+    `<div><span>위치 권한</span><b class="${classFor(s.location)}">${locLabel(s.location)}</b></div>`+
+    `<div><span>알림 권한</span><b class="${classFor(s.notifications)}">${notifLabel(s.notifications)}</b></div>`+
+    `<div><span>회사 반경 감시</span><b class="${s.monitoring?'ok':'warn'}">${monitoring}</b></div>`+
+    (s.lastError?`<div><span>마지막 오류</span><b class="bad">${s.lastError}</b></div>`:'');
+  $('monitorTag').hidden=!s.monitoring;
+  if(s.geofence&&!geofence){ geofence=s.geofence; localStorage.setItem(GEO_KEY,JSON.stringify(geofence)); }
+  if(s.location==='whenInUse') $('permHint').innerHTML='위치 권한이 <b>앱 사용 중</b>이에요. 잠금 화면 알림을 받으려면 아이폰 설정 › 개인정보 보호 및 보안 › 위치 서비스 › 퇴근했니? 에서 <b>항상</b>으로 바꿔 주세요.';
+}
+function fillGeofenceForm(){
+  if(!geofence) return;
+  $('companyName').value=geofence.label||'';
+  $('companyLat').value=geofence.latitude;
+  $('companyLon').value=geofence.longitude;
+  $('radius').value=Math.min(500,Math.max(100,geofence.radius||200));
+  $('radiusLabel').textContent=$('radius').value+'m';
+}
+async function refreshStatus(){
+  if(!isNative()){ renderPerm(); return; }
+  const P=plugin('GeofenceCommute');
+  if(!P){ renderPerm(); return; }
+  try { nativeStatus=await P.getStatus(); } catch(e) { nativeStatus={location:'unknown',notifications:'unknown'}; }
+  renderPerm(); fillGeofenceForm();
+}
+$('refreshStatus').onclick=refreshStatus;
+$('radius').oninput=()=>{ $('radiusLabel').textContent=$('radius').value+'m'; };
+$('askLocation').onclick=async()=>{
+  if(!isNative()){ alert('아이폰 앱에서 동작해요.'); return; }
+  const P=plugin('GeofenceCommute');
+  try { const r=await P.requestLocationPermission(); nativeStatus=Object.assign({},nativeStatus,r); }
+  catch(e){ alert('권한 요청에 실패했어요: '+e.message); }
+  await refreshStatus();
+  if(nativeStatus&&nativeStatus.location==='whenInUse') alert('위치 권한이 "앱 사용 중"으로 설정됐어요.\n설정 앱 › 개인정보 보호 및 보안 › 위치 서비스 › 퇴근했니? 에서 "항상"을 선택해 주세요.');
+  else if(nativeStatus&&nativeStatus.location==='denied') alert('위치 권한이 거부되어 있어요.\n아이폰 설정 앱 › 개인정보 보호 및 보안 › 위치 서비스 에서 퇴근했니?를 켜 주세요.');
+};
+$('askNotif').onclick=async()=>{
+  if(!isNative()){ alert('아이폰 앱에서 동작해요.'); return; }
+  const P=plugin('GeofenceCommute');
+  try { await P.requestNotificationPermission(); } catch(e){ alert('알림 권한 요청에 실패했어요: '+e.message); }
+  await refreshStatus();
+};
+$('useCurrent').onclick=async()=>{
+  if(!isNative()){
+    if(!navigator.geolocation){ alert('이 브라우저에서는 현재 위치를 쓸 수 없어요. 위도·경도를 직접 입력해 주세요.'); return; }
+    navigator.geolocation.getCurrentPosition(p=>{
+      $('companyLat').value=p.coords.latitude.toFixed(6);
+      $('companyLon').value=p.coords.longitude.toFixed(6);
+      alert('현재 위치를 채웠어요. [위치 저장 · 감시 시작]을 눌러 저장하세요.');
+    },()=>alert('현재 위치를 가져오지 못했어요. 위도·경도를 직접 입력해 주세요.'),{enableHighAccuracy:true,timeout:15000});
+    return;
+  }
+  const P=plugin('GeofenceCommute');
+  try {
+    const pos=await P.getCurrentLocation();
+    $('companyLat').value=Number(pos.latitude).toFixed(6);
+    $('companyLon').value=Number(pos.longitude).toFixed(6);
+    alert('현재 위치를 채웠어요(정확도 ±'+Math.round(pos.accuracy||0)+'m).\n[위치 저장 · 감시 시작]을 눌러야 저장됩니다.');
+  } catch(e) {
+    alert('현재 위치를 가져오지 못했어요: '+e.message+'\n위도·경도를 직접 입력할 수 있어요.');
+  }
+};
+$('saveGeofence').onclick=async()=>{
+  const lat=parseFloat($('companyLat').value), lon=parseFloat($('companyLon').value);
+  if(!isFinite(lat)||!isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180){ alert('위도·경도를 확인해 주세요.'); return; }
+  const radius=Number($('radius').value)||200;
+  const label=$('companyName').value.trim()||'회사';
+  geofence={latitude:lat,longitude:lon,radius,label};
+  localStorage.setItem(GEO_KEY,JSON.stringify(geofence));
+  if(!isNative()){ alert('웹 미리보기에서는 위치만 저장했어요. 감시는 아이폰 앱에서 시작됩니다.'); return; }
+  const P=plugin('GeofenceCommute');
+  try {
+    nativeStatus=await P.setGeofence({latitude:lat,longitude:lon,radius,label});
+    renderPerm();
+    const hints=[];
+    if(nativeStatus.notifications!=='granted') hints.push('알림 권한이 꺼져 있어요. [알림 권한 요청]을 눌러 주세요.');
+    if(nativeStatus.location!=='always') hints.push('위치 권한이 "항상 허용"이 아니면 잠금 화면 감지가 제한돼요. [위치 권한 요청] 후 설정에서 "항상"을 골라 주세요.');
+    alert(`회사 위치를 저장하고 반경 ${radius}m 감시를 시작했어요.`+(hints.length?'\n\n• '+hints.join('\n• '):''));
+  } catch(e) {
+    alert('위치를 저장하지 못했어요: '+e.message);
+  }
+};
+$('stopGeofence').onclick=async()=>{
+  if(!isNative()){ localStorage.removeItem(GEO_KEY); geofence=null; alert('저장된 회사 위치를 지웠어요.'); return; }
+  if(!confirm('회사 반경 감시를 끌까요? 저장된 회사 위치도 함께 지워집니다.')) return;
+  const P=plugin('GeofenceCommute');
+  try { nativeStatus=await P.clearGeofence(); } catch(e) { alert('중지하지 못했어요: '+e.message); }
+  localStorage.removeItem(GEO_KEY); geofence=null;
+  renderPerm();
+};
+$('testIn').onclick=()=>testNotification('in');
+$('testOut').onclick=()=>testNotification('out');
+async function testNotification(type){
+  if(!isNative()){ alert('아이폰 앱에서 동작해요.'); return; }
+  const P=plugin('GeofenceCommute');
+  try {
+    await P.testNotification({type,delay:5});
+    alert('5초 뒤 "'+(type==='in'?'출근 기록할까요?':'퇴근 기록할까요?')+'" 알림이 떠요.\n홈으로 나가거나 잠금 화면에서 알림을 눌러 보세요.');
+  } catch(e) { alert('테스트 알림을 보내지 못했어요: '+e.message); }
+}
+
+/* ---------- 알림 탭 → 입력 화면 ---------- */
+function hideBanner(){ pendingAction=null; $('actionBanner').hidden=true; $('bannerApply').hidden=true; }
+$('bannerClose').onclick=hideBanner;
+$('bannerApply').onclick=()=>{
+  if(!pendingAction) return;
+  const field=pendingAction.type==='out'?actualEnd:startTime;
+  field.value=pendingAction.timeStr;
+  hero();
+  $('bannerMsg').textContent=`알림 시각(${pendingAction.timeStr})으로 입력했어요. [기록 저장]을 눌러야 실제로 저장됩니다.`;
+  $('bannerApply').hidden=true;
+  pendingAction.state='filled';
+};
+function toPayloadTime(payload){
+  let d=null;
+  if(payload.timestamp){ const t=new Date(payload.timestamp); if(!isNaN(t.getTime())) d=t; }
+  if(!d && payload.epoch!=null){ const t=new Date(Number(payload.epoch)); if(!isNaN(t.getTime())) d=t; }
+  if(!d && payload.date){ const t=new Date(payload.date+'T00:00:00'); if(!isNaN(t.getTime())) d=t; }
+  return d||new Date();
+}
+function handleCommuteAction(payload){
+  if(!payload||!payload.type) return;
+  const when=toPayloadTime(payload);
+  const dateK=payload.date||dkey(when);
+  const timeStr=pad(when.getHours())+':'+pad(when.getMinutes());
+  const isOut=payload.type==='out';
+  const field=isOut?actualEnd:startTime;
+  const oldDate=dateInput.value;
+  showTab('record');
+  if(dateInput.value!==dateK||!dateInput.value) loadDate(dateK);
+  const existing=field.value;
+  let state;
+  if(!existing){ field.value=timeStr; hero(); state='filled'; }
+  else if(existing===timeStr){ state='same'; }
+  else { state='kept'; }
+  pendingAction={type:payload.type,timeStr,dateK,state,existingTime:existing};
+  const title=isOut?`🔔 퇴근 알림 · ${timeStr}`:`🔔 출근 알림 · ${timeStr}`;
+  $('bannerTitle').textContent=title;
+  const dayLabel=dateK===today()?'오늘':new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'short'}).format(when);
+  let msg;
+  if(state==='filled'){
+    msg=`${dayLabel} ${isOut?'퇴근':'출근'} 시간을 알림 시각(${timeStr})으로 채웠어요. 확인하고 [기록 저장]을 눌러야 저장됩니다.`;
+  } else if(state==='same'){
+    msg=`이미 ${timeStr}이 입력되어 있어요. 저장을 누르면 확정됩니다.`;
+  } else {
+    msg=`이미 ${existing} 기록이 있어서 자동으로 바꾸지 않았어요. 알림 시각으로 바꾸려면 아래 버튼을 눌러 주세요.`;
+  }
+  $('bannerMsg').textContent=msg;
+  $('bannerApply').hidden=state!=='kept';
+  $('actionBanner').hidden=false;
+  if(oldDate!==dateK) scrollTo({top:0,behavior:'smooth'});
+  else $('actionBanner').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function initNative(){
+  if(!isNative()) return;
+  const P=plugin('GeofenceCommute');
+  if(!P) return;
+  try {
+    const pending=await P.getPendingAction();
+    if(pending&&pending.type) handleCommuteAction(pending);
+  } catch(e) {}
+  try {
+    P.addListener('commuteAction',data=>{ if(data&&data.type) handleCommuteAction(data); });
+  } catch(e) {}
+  refreshStatus();
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ refreshStatus(); drainPending(); } });
+async function drainPending(){
+  if(!isNative()) return;
+  const P=plugin('GeofenceCommute');
+  if(!P) return;
+  try {
+    const pending=await P.getPendingAction();
+    if(pending&&pending.type&&(!pendingAction||pendingAction.timeStr!==pad(toPayloadTime(pending).getHours())+':'+pad(toPayloadTime(pending).getMinutes()))) handleCommuteAction(pending);
+  } catch(e) {}
+}
+
+/* ---------- 초기화 ---------- */
+const n0=new Date();$('fromDate').value=`${n0.getFullYear()}-${pad(n0.getMonth()+1)}-01`;$('toDate').value=dkey(new Date(n0.getFullYear(),n0.getMonth()+1,0));
+fillGeofenceForm();loadDate(today());refresh();renderPerm();
+$('appVersion').textContent='1.0';
+initNative();
+try { if(isNative()){ const App=plugin('App'); if(App&&App.getInfo){ App.getInfo().then(i=>{$('appVersion').textContent=`${i.version} (${i.build})`;}).catch(()=>{}); } } } catch(e) {}
+if(!isNative()&&'serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+
+/* 헤드리스 검증용 (앱 동작에는 영향 없음) */
+window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist};
+</script></body></html>

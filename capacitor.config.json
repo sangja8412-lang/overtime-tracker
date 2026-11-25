@@ -1,0 +1,9 @@
+{
+  "appId": "com.kyeore.overtimetracker",
+  "appName": "퇴근했니?",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#f0e6d5"
+  }
+}

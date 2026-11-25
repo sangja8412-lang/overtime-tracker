@@ -1,0 +1,19 @@
+{
+  "name": "overtime-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "퇴근했니? - 출퇴근·초과근무 기록 iOS 앱",
+  "scripts": {
+    "sync": "cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/filesystem": "^7.1.4",
+    "@capacitor/ios": "^7.4.2",
+    "@capacitor/share": "^7.0.2",
+    "geofence-commute": "file:native/geofence-commute"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.2"
+  }
+}

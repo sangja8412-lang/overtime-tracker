@@ -1,0 +1,35 @@
+{
+  "name": "geofence-commute",
+  "version": "1.0.0",
+  "description": "퇴근했니? 회사 반경 진입/이탈 감지 + 잠금 화면 로컬 알림 (CLLocationManager 지오펜스)",
+  "main": "dist/esm/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "ios/Sources",
+    "Package.swift",
+    "GeofenceCommute.podspec",
+    "dist/"
+  ],
+  "license": "UNLICENSED",
+  "author": "이겨레",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sangja8412-lang/overtime-tracker.git"
+  },
+  "keywords": [
+    "capacitor",
+    "plugin",
+    "ios",
+    "geofence",
+    "location"
+  ],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=7.0.0"
+  }
+}
