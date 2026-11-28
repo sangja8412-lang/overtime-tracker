@@ -68,6 +68,7 @@ details summary{cursor:pointer;font-weight:700;color:#432e13;font-size:14px;padd
 .check input{width:22px;height:22px;flex:0 0 auto;margin:0;accent-color:#32271c}
 .hint-box{background:#f6f1e3;border:1px solid #e6d6b3;border-radius:12px;padding:11px;font-size:12px;color:#6d5837;line-height:1.5;margin-top:10px}
 .tag{display:inline-block;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:700;background:#efe5d5;color:#78541c;margin-left:6px}
+.tag[hidden]{display:none}
 </style></head><body><div class="wrap">
 <div class="app-nav" role="tablist" aria-label="근무 기록 보기">
   <button id="recordTab" role="tab" aria-selected="true" aria-controls="recordPanel">출퇴근</button>
@@ -140,6 +141,13 @@ details summary{cursor:pointer;font-weight:700;color:#432e13;font-size:14px;padd
   <label class="check"><input id="nagEnabled" type="checkbox"> 퇴근 독촉 알림 받기</label>
   <div id="nagPlan" class="hint-box">앱을 열면 오늘의 독촉 계획을 보여 드려요.</div>
   <div class="btns" style="margin-top:10px"><button class="secondary" id="nagTest">1분 뒤 독촉 테스트</button></div>
+</section>
+
+<section class="card">
+  <h2>퇴근 기록 깜빡 알림<span id="forgetTag" class="tag" hidden>예약됨</span></h2>
+  <p class="muted" style="margin:0 0 10px;line-height:1.5">회사 반경을 벗어났는데 오늘 퇴근 기록이 없으면 <b>1시간 간격으로 총 3회</b> 알려 드려요. 문구는 매일 달라져요(150개 중 오늘 3개). 퇴근 기록을 저장하면 남은 알림은 바로 사라져요.</p>
+  <div id="forgetPlan" class="hint-box">회사 반경을 벗어나면 그때부터 1시간마다 3번 알려 드려요.</div>
+  <div class="btns" style="margin-top:10px"><button class="secondary" id="forgetTest">1분 뒤 깜빡 테스트</button></div>
 </section>
 
 <section class="card">
@@ -741,7 +749,7 @@ async function syncNag(){
     regularEnd:r.regularEnd||settings.regularEnd||'17:30',
     enabled:$('nagEnabled').checked
   };
-  try { nagStatus=await P.syncCommuteNag(payload); renderNag(nagStatus); }
+  try { nagStatus=await P.syncCommuteNag(payload); renderNag(nagStatus); if(nagStatus&&nagStatus.forget) renderForget(nagStatus.forget); }
   catch(e) { renderNag(null); }
 }
 $('nagEnabled').onchange=()=>{
@@ -756,6 +764,52 @@ $('nagTest').onclick=async()=>{
   try {
     await P.testNagNotification({round:1,delay:60});
     alert('1분 뒤 오늘의 퇴근 독촉 문구로 알림이 떠요.\n잠금 화면에서 눌러 보세요. 누르면 지금 시각으로 퇴근 칸이 채워집니다.');
+  } catch(e) { alert('테스트 알림을 보내지 못했어요: '+e.message); }
+};
+
+/* ---------- 설정: 퇴근 기록 깜빡 알림 (회사 반경 이탈 후 1시간마다 3회) ---------- */
+let forgetStatus=null;
+const FORGET_STATE_TEXT={
+  scheduled:'회사 반경을 벗어난 시각부터 1시간 간격으로 3회 예약했어요.',
+  waitingExit:'회사 반경을 벗어나면 그때부터 1시간마다 3번 알려 드려요.',
+  clockedOut:'오늘 퇴근 기록이 있어서 깜빡 알림은 보내지 않아요.',
+  finished:'오늘 깜빡 알림이 모두 끝났어요. 퇴근 기록은 아직 비어 있어요.',
+  disabled:'퇴근 독촉 알림이 꺼져 있어서 깜빡 알림도 보내지 않아요.'
+};
+function renderForget(st){
+  if(st) forgetStatus=st;
+  const box=$('forgetPlan'), tag=$('forgetTag');
+  if(!isNative()){
+    box.textContent='아이폰 앱에서 동작해요. 회사 반경을 벗어났는데 퇴근 기록이 없으면 1시간 간격으로 총 3회, 매일 다른 문구로 알려 드려요.';
+    tag.hidden=true;
+    return;
+  }
+  const s=forgetStatus;
+  if(!s){ box.textContent='앱 상태를 아직 읽지 못했어요. 위의 [상태 새로고침]을 눌러 보세요.'; tag.hidden=true; return; }
+  tag.hidden=s.state!=='scheduled';
+  const lines=[];
+  lines.push('<b>'+(s.clockIn?'출근 '+s.clockIn:'출근 기록 없음')+(s.clockOut?' · 퇴근 '+s.clockOut:' · 퇴근 전')+'</b>');
+  if(FORGET_STATE_TEXT[s.state]) lines.push(FORGET_STATE_TEXT[s.state]);
+  if(s.state==='scheduled'&&s.nextTime) lines.push('회사 나온 시각 '+s.exitTime+' · 다음 알림 '+s.nextTime);
+  else if(s.exitTime) lines.push('회사 나온 시각 '+s.exitTime);
+  if(Array.isArray(s.rounds)){
+    for(const r of s.rounds) lines.push('· '+r.time+' — '+r.phrase+(r.skipped?' (자정 넘어 제외)':(r.passed?' (지남)':'')));
+  }
+  box.innerHTML=lines.join('<br>');
+}
+async function syncForget(){
+  if(!isNative()){ renderForget(null); return; }
+  const P=plugin('GeofenceCommute');
+  if(!P||typeof P.getForgetStatus!=='function'){ renderForget(null); return; }
+  try { renderForget(await P.getForgetStatus()); } catch(e){ renderForget(null); }
+}
+$('forgetTest').onclick=async()=>{
+  if(!isNative()){ alert('아이폰 앱에서 동작해요.'); return; }
+  const P=plugin('GeofenceCommute');
+  if(!P||typeof P.testForgetNotification!=='function'){ alert('앱을 새 빌드로 다시 설치해 주셔야 테스트할 수 있어요.'); return; }
+  try {
+    await P.testForgetNotification({round:1,delay:60});
+    alert('1분 뒤 오늘의 퇴근 기록 깜빡 문구로 알림이 떠요.\n잠금 화면에서 눌러 보세요. 누르면 회사를 나선 시각으로 퇴근 칸이 채워집니다.');
   } catch(e) { alert('테스트 알림을 보내지 못했어요: '+e.message); }
 };
 
@@ -780,9 +834,12 @@ function toPayloadTime(payload){
 }
 function handleCommuteAction(payload){
   if(!payload||!payload.type) return;
+  const isForget=!!payload.forget;
   const isNag=!!payload.nag;
-  const when=isNag?new Date():toPayloadTime(payload);
-  const dateK=isNag?dkey(when):(payload.date||dkey(when));
+  // '기록 깜빡' 알림은 회사를 나선 시각을 기본값으로 채운다.
+  const exitDate=payload.exitEpoch!=null?new Date(Number(payload.exitEpoch)):null;
+  const when=isForget?((exitDate&&!isNaN(exitDate.getTime()))?exitDate:new Date()):(isNag?new Date():toPayloadTime(payload));
+  const dateK=isForget?(payload.date||dkey(when)):(isNag?dkey(when):(payload.date||dkey(when)));
   const timeStr=pad(when.getHours())+':'+pad(when.getMinutes());
   const isOut=payload.type==='out';
   const field=isOut?actualEnd:startTime;
@@ -794,15 +851,17 @@ function handleCommuteAction(payload){
   if(!existing){ field.value=timeStr; hero(); state='filled'; }
   else if(existing===timeStr){ state='same'; }
   else { state='kept'; }
-  pendingAction={type:payload.type,timeStr,dateK,state,existingTime:existing,nag:isNag};
-  const title=isNag?`🦫 퇴근 독촉 · ${timeStr}`:(isOut?`🔔 퇴근 알림 · ${timeStr}`:`🔔 출근 알림 · ${timeStr}`);
+  pendingAction={type:payload.type,timeStr,dateK,state,existingTime:existing,nag:isNag,forget:isForget};
+  const title=isForget?`🦫 퇴근 기록 깜빡 · ${timeStr}`:(isNag?`🦫 퇴근 독촉 · ${timeStr}`:(isOut?`🔔 퇴근 알림 · ${timeStr}`:`🔔 출근 알림 · ${timeStr}`));
   $('bannerTitle').textContent=title;
   const dayLabel=dateK===today()?'오늘':new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'short'}).format(when);
   let msg;
   if(state==='filled'){
-    msg=isNag
-      ? `${dayLabel} 퇴근 칸을 지금 시각(${timeStr})으로 채웠어요. 실제로 나선 시각으로 고친 뒤 [기록 저장]을 눌러 주세요.`
-      : `${dayLabel} ${isOut?'퇴근':'출근'} 시간을 알림 시각(${timeStr})으로 채웠어요. 확인하고 [기록 저장]을 눌러야 저장됩니다.`;
+    msg=isForget
+      ? `${dayLabel} 회사 나오신 시각(${timeStr})을 퇴근 칸에 채웠어요. 실제로 나선 시각으로 고친 뒤 [기록 저장]을 눌러 주세요.`
+      : (isNag
+        ? `${dayLabel} 퇴근 칸을 지금 시각(${timeStr})으로 채웠어요. 실제로 나선 시각으로 고친 뒤 [기록 저장]을 눌러 주세요.`
+        : `${dayLabel} ${isOut?'퇴근':'출근'} 시간을 알림 시각(${timeStr})으로 채웠어요. 확인하고 [기록 저장]을 눌러야 저장됩니다.`);
   } else if(state==='same'){
     msg=`이미 ${timeStr}이 입력되어 있어요. 저장을 누르면 확정됩니다.`;
   } else {
@@ -827,8 +886,9 @@ async function initNative(){
   } catch(e) {}
   refreshStatus();
   syncNag();
+  syncForget();
 }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ refreshStatus(); drainPending(); syncNag(); } });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ refreshStatus(); drainPending(); syncNag(); syncForget(); } });
 async function drainPending(){
   if(!isNative()) return;
   const P=plugin('GeofenceCommute');
@@ -841,12 +901,12 @@ async function drainPending(){
 
 /* ---------- 초기화 ---------- */
 const n0=new Date();$('fromDate').value=`${n0.getFullYear()}-${pad(n0.getMonth()+1)}-01`;$('toDate').value=dkey(new Date(n0.getFullYear(),n0.getMonth()+1,0));
-fillGeofenceForm();loadDate(today());refresh();renderPerm();renderNag(null);
+fillGeofenceForm();loadDate(today());refresh();renderPerm();renderNag(null);renderForget(null);
 $('appVersion').textContent='1.0';
 initNative();
 try { if(isNative()){ const App=plugin('App'); if(App&&App.getInfo){ App.getInfo().then(i=>{$('appVersion').textContent=`${i.version} (${i.build})`;}).catch(()=>{}); } } } catch(e) {}
 if(!isNative()&&'serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 
 /* 헤드리스 검증용 (앱 동작에는 영향 없음) */
-window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist,syncNag,renderNag,get nagStatus(){return nagStatus},get nagSettings(){return nagSettings}};
+window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist,syncNag,syncForget,renderNag,renderForget,get nagStatus(){return nagStatus},get nagSettings(){return nagSettings},get forgetStatus(){return forgetStatus}};
 </script></body></html>

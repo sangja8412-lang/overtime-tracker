@@ -170,9 +170,9 @@ def main():
     check('웹: 독촉 탭은 지금 시각으로 프리필', 'isNag?new Date():toPayloadTime(payload)' in html)
 
     cm = read('codemagic.yaml')
-    check('codemagic: 빌드 번호 5 고정', 'APP_BUILD_NUMBER: "5"' in cm and 'APP_BUILD_NUMBER:-' in cm)
+    check('codemagic: 빌드 번호 6 고정', 'APP_BUILD_NUMBER: "6"' in cm and 'APP_BUILD_NUMBER:-' in cm)
     pbx = read('ios/App/App.xcodeproj/project.pbxproj')
-    check('Xcode: CURRENT_PROJECT_VERSION = 5', pbx.count('CURRENT_PROJECT_VERSION = 5;') == 2)
+    check('Xcode: CURRENT_PROJECT_VERSION = 6', pbx.count('CURRENT_PROJECT_VERSION = 6;') == 2)
     check('Xcode: MARKETING_VERSION = 1.0', pbx.count('MARKETING_VERSION = 1.0;') == 2)
 
     # ---------- E. 헤드리스 ----------

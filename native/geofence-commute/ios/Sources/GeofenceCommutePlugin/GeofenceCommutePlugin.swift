@@ -133,6 +133,9 @@ public final class CommuteNotificationHandler: NSObject, UNUserNotificationCente
         if let radius = info["radius"] as? Double { payload["radius"] = radius }
         if let nag = info["nag"] as? Bool { payload["nag"] = nag }
         if let round = info["round"] as? Int { payload["round"] = round }
+        // '퇴근 기록 깜빡' 알림: 탭하면 회사를 나선 시각이 퇴근 칸에 채워진다.
+        if let forget = info["forget"] as? Bool { payload["forget"] = forget }
+        if let exitEpoch = info["exitEpoch"] as? Double { payload["exitEpoch"] = exitEpoch }
         payload["action"] = response.actionIdentifier
 
         if payload["type"] != nil {
@@ -278,9 +281,12 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    /// 지오펜스 진입/이탈을 퇴근 독촉 상태에 반영한다(앱이 백그라운드·종료 상태여도 호출됨).
-    private func updateNagState(inside: Bool) {
-        let today = CommuteNagPlanner.dayKey()
+    /// 지오펜스 진입/이탈을 퇴근 독촉·기록 깜빡 상태에 반영한다
+    /// (앱이 백그라운드·종료 상태여도 호출됨).
+    /// - witnessedExit: 이번 호출이 '회사를 벗어난 것'을 실제로 목격했는지.
+    ///   앱을 처음 켰을 때의 기준선(이미 밖)과 구분한다.
+    private func updateNagState(inside: Bool, witnessedExit: Bool = false, at now: Date = Date()) {
+        let today = CommuteNagPlanner.dayKey(now)
         if inside {
             CommuteNagStore.clearSuppression()
             var day = CommuteNagStore.day
@@ -290,12 +296,22 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
                                           clockOut: "",
                                           regularEnd: CommuteNagStore.settings.regularEnd)
             }
-            if day!.clockIn.isEmpty { day!.clockIn = CommuteNagPlanner.hhmm(Date()) }
+            if day!.clockIn.isEmpty { day!.clockIn = CommuteNagPlanner.hhmm(now) }
             CommuteNagStore.day = day
+            // 다시 회사 안이면 '기록 깜빡' 알림은 필요 없다.
+            CommuteForgetScheduler.cancelAll(clear: true)
         } else {
             CommuteNagStore.suppress(date: today, reason: "geofenceExit")
+            // 반경을 벗어나면 기존 야근 독촉 알림은 미리 끈다.
+            CommuteNagScheduler.cancelAll()
         }
         CommuteNagScheduler.refresh()
+        if witnessedExit && !inside {
+            // 오늘 출근은 했는데 퇴근 기록이 없다 → 1시간 간격 3회 '기록 깜빡' 알림 예약.
+            CommuteForgetScheduler.scheduleAfterExit(exitDate: now, day: CommuteNagStore.day, now: now)
+        } else {
+            CommuteForgetScheduler.refresh(now: now)
+        }
     }
 
     private func handleTransition(inside: Bool, baselineIfUnknown: Bool = false) {
@@ -303,8 +319,10 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
         let newState = inside ? "inside" : "outside"
         let previous = CommuteStore.lastRegionState
         CommuteStore.lastRegionState = newState
+        // 반경 이탈을 실제로 목격했는지: 기준선(previous == nil)은 이탈이 아니다.
+        let witnessedExit = !inside && (previous != nil || !baselineIfUnknown)
         // 퇴근 독촉: 사무실에 있으면 출근으로 보고 예약하고, 반경을 벗어나면 오늘 독촉은 끈다.
-        updateNagState(inside: inside)
+        updateNagState(inside: inside, witnessedExit: witnessedExit)
         if previous == nil {
             // First determination after install/save: this is the baseline, not a transition.
             if baselineIfUnknown { return }
@@ -379,7 +397,9 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "testNotification", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncCommuteNag", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getNagStatus", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "testNagNotification", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "testNagNotification", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getForgetStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "testForgetNotification", returnType: CAPPluginReturnPromise)
     ]
 
     private var observer: NSObjectProtocol?
@@ -387,8 +407,9 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         CommuteNotificationHandler.shared.start()
         CommuteGeofenceManager.shared.restoreMonitoring()
-        // 앱이 다시 열리면 오늘 남은 독촉 알림을 상태에 맞춰 다시 맞춘다.
+        // 앱이 다시 열리면 오늘 남은 독촉·기록 깜빡 알림을 상태에 맞춰 다시 맞춘다.
         CommuteNagScheduler.refresh()
+        CommuteForgetScheduler.refresh()
         observer = NotificationCenter.default.addObserver(forName: .commuteActionTapped,
                                                           object: nil,
                                                           queue: .main) { [weak self] note in
@@ -551,6 +572,7 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         CommuteGeofenceManager.shared.stopMonitoring()
         CommuteStore.geofence = nil
         CommuteStore.resetRegionState()
+        CommuteForgetScheduler.cancelAll(clear: true)
         getNotificationSettings { settings in
             call.resolve(self.statusPayload(notificationStatus: settings))
         }
@@ -620,8 +642,11 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         CommuteNagScheduler.refresh()
+        // 퇴근 기록이 저장되면 남은 '기록 깜빡' 알림을 즉시 지운다.
+        CommuteForgetScheduler.refresh()
         var payload = nagPayload()
         payload["saved"] = true
+        payload["forget"] = CommuteForgetScheduler.status()
         call.resolve(payload)
     }
 
@@ -633,6 +658,19 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         let round = call.getInt("round") ?? 1
         let delay = call.getDouble("delay") ?? 60
         CommuteNagScheduler.scheduleTest(round: round, delay: delay)
+        call.resolve(["scheduled": true, "round": round, "delay": delay])
+    }
+
+    // MARK: - 퇴근 기록 깜빡 알림
+
+    @objc func getForgetStatus(_ call: CAPPluginCall) {
+        call.resolve(CommuteForgetScheduler.status())
+    }
+
+    @objc func testForgetNotification(_ call: CAPPluginCall) {
+        let round = call.getInt("round") ?? 1
+        let delay = call.getDouble("delay") ?? 60
+        CommuteForgetScheduler.scheduleTest(round: round, delay: delay)
         call.resolve(["scheduled": true, "round": round, "delay": delay])
     }
 
