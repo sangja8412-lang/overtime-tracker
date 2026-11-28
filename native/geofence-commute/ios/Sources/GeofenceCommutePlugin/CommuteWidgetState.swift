@@ -221,7 +221,7 @@ enum CommuteWidgetStore {
                                         time: time,
                                         epoch: now.timeIntervalSince1970 * 1000.0,
                                         source: source)
-        if enqueue { enqueue(entry) }
+        if enqueue { CommuteWidgetStore.enqueue(entry) }
         return entry
     }
 
