@@ -31,8 +31,8 @@ workflows:
         XCODE_WORKSPACE: App.xcworkspace
         XCODE_SCHEME: App
         APP_STORE_APP_ID: "6839007688"
-        # TestFlight 빌드 번호(1.0 (6)). 한 번 올린 번호는 다시 쓸 수 없다.
-        APP_BUILD_NUMBER: "6"
+        # TestFlight 빌드 번호(1.0 (7)). 한 번 올린 번호는 다시 쓸 수 없다.
+        APP_BUILD_NUMBER: "7"
     scripts:
       - name: 의존성 설치
         script: |
@@ -66,8 +66,8 @@ workflows:
           agvtool new-version -all "$BUILD" >/dev/null 2>&1 || true
           echo "CFBundleVersion=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' App/Info.plist)"
           echo "CFBundleShortVersionString=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' App/Info.plist)"
-          if [ "$BUILD" != "6" ]; then
-            echo "빌드 번호가 6이 아니에요: $BUILD" >&2
+          if [ "$BUILD" != "7" ]; then
+            echo "빌드 번호가 7이 아니에요: $BUILD" >&2
             exit 1
           fi
 

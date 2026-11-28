@@ -50,7 +50,7 @@ def main():
     js_name = re.search(r'public let jsName = "([^"]+)"', swift)
     check('jsName = GeofenceCommute', js_name and js_name.group(1) == 'GeofenceCommute', js_name.group(1) if js_name else 'none')
     methods = re.findall(r'CAPPluginMethod\(name: "([^"]+)"', swift)
-    check('플러그인 메서드 14개(기본 9 + 퇴근 독촉 3 + 기록 깜빡 2)', len(methods) == 14, ', '.join(methods))
+    check('플러그인 메서드 18개(기본 9 + 퇴근 독촉 3 + 기록 깜빡 2 + 자동 기록 4)', len(methods) == 18, ', '.join(methods))
 
     html = read('www/index.html')
     used = set(re.findall(r"P\.([a-zA-Z]+)\(", html))

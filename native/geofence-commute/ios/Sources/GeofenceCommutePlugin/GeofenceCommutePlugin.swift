@@ -86,6 +86,8 @@ enum CommuteStore {
 
 extension Notification.Name {
     static let commuteActionTapped = Notification.Name("commuteActionTapped")
+    /// 앱이 떠 있을 때 자동 기록이 만들어지면 웹 레이어에 바로 알린다.
+    static let commuteAutoRecordCreated = Notification.Name("commuteAutoRecordCreated")
 }
 
 /// Owns UNUserNotificationCenter so that a tap works even when the app was
@@ -93,6 +95,8 @@ extension Notification.Name {
 /// before the web view exists).
 public final class CommuteNotificationHandler: NSObject, UNUserNotificationCenterDelegate {
     public static let shared = CommuteNotificationHandler()
+    /// 자동 기록 완료 알림용 카테고리(누를 동작 없이 앱만 열린다).
+    public static let autoCategory = "COMMUTE_AUTO"
 
     private var started = false
 
@@ -107,7 +111,11 @@ public final class CommuteNotificationHandler: NSObject, UNUserNotificationCente
                                               actions: [record, later],
                                               intentIdentifiers: [],
                                               options: [])
-        center.setNotificationCategories([category])
+        let auto = UNNotificationCategory(identifier: Self.autoCategory,
+                                          actions: [],
+                                          intentIdentifiers: [],
+                                          options: [])
+        center.setNotificationCategories([category, auto])
     }
 
     // Show the banner even while the app is in the foreground (잠금 화면과 동일한 문구).
@@ -321,17 +329,101 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
         CommuteStore.lastRegionState = newState
         // 반경 이탈을 실제로 목격했는지: 기준선(previous == nil)은 이탈이 아니다.
         let witnessedExit = !inside && (previous != nil || !baselineIfUnknown)
+        // 기준선(첫 확인)은 이동이 아니다. 자동 기록도 남기지 않는다.
+        let isTransition = previous == nil ? !baselineIfUnknown : (previous != newState)
         // 퇴근 독촉: 사무실에 있으면 출근으로 보고 예약하고, 반경을 벗어나면 오늘 독촉은 끈다.
         updateNagState(inside: inside, witnessedExit: witnessedExit)
-        if previous == nil {
-            // First determination after install/save: this is the baseline, not a transition.
-            if baselineIfUnknown { return }
-        } else if previous == newState {
+        guard isTransition else { return }
+
+        let now = Date()
+        let settings = CommuteAutoRecordStore.settings
+        let today = CommuteNagPlanner.dayKey(now)
+
+        if inside, settings.autoClockIn {
+            // 자동 출근이 켜져 있으면 '출근 기록할까요?' 대신 자동으로 기록하고 완료만 알린다.
+            if let entry = CommuteAutoRecordStore.record(date: today,
+                                                         type: "in",
+                                                         time: CommuteNagPlanner.hhmm(now),
+                                                         at: now) {
+                announceAutoRecord(entry)
+                CommuteNagScheduler.refresh()
+            }
+            // 오늘 출근 기록이 이미 있으면 덮어쓰지 않고 조용히 넘어간다.
             return
         }
+
+        if !inside, settings.autoClockOut {
+            let state = CommuteAutoRecordStore.dayState(for: today)
+            if let entry = CommuteAutoRecordStore.record(date: today,
+                                                         type: "out",
+                                                         time: CommuteNagPlanner.hhmm(now),
+                                                         at: now) {
+                markClockOut(time: entry.time, at: now)
+                announceAutoRecord(entry)
+                return
+            }
+            // 이미 퇴근 기록이 있으면 조용히 넘어간다.
+            if !state.clockOut.isEmpty { return }
+            // 출근 기록이 아예 없으면 남길 퇴근이 없으니 기존 안내 알림을 그대로 보낸다.
+        }
+
         let type = inside ? "in" : "out"
         guard CommuteStore.canNotify(type: type) else { return }
-        postNotification(type: type, at: Date())
+        postNotification(type: type, at: now)
+    }
+
+    /// 자동 퇴근을 야근 독촉·기록 깜빡 상태에도 반영하고, 남은 알림을 모두 취소한다.
+    private func markClockOut(time: String, at now: Date) {
+        let today = CommuteNagPlanner.dayKey(now)
+        var day = CommuteNagStore.day
+        if day == nil || day!.date != today {
+            day = CommuteNagStore.Day(date: today,
+                                      clockIn: CommuteAutoRecordStore.dayState(for: today).clockIn,
+                                      clockOut: time,
+                                      regularEnd: CommuteNagStore.settings.regularEnd)
+        } else {
+            day!.clockOut = time
+        }
+        CommuteNagStore.day = day
+        CommuteNagStore.suppress(date: today, reason: "clockOut")
+        // 자동 퇴근이 찍히면 야근 독촉(+1~+4시간)과 퇴근 기록 깜빡 알림 3회를 즉시 모두 취소한다.
+        CommuteNagScheduler.cancelAll()
+        CommuteForgetScheduler.cancelAll(clear: true)
+        CommuteNagScheduler.refresh()
+    }
+
+    /// "HH:MM 출근/퇴근이 자동으로 기록되었어요!" 알림을 띄우고 웹 레이어에도 알린다.
+    func announceAutoRecord(_ entry: CommuteAutoRecordStore.Pending) {
+        CommuteNotificationHandler.shared.start()
+        let center = UNUserNotificationCenter.current()
+        let content = UNMutableNotificationContent()
+        content.title = "🦫 퇴근했니?"
+        content.body = "\(entry.time) \(entry.type == "in" ? "출근" : "퇴근")이 자동으로 기록되었어요!"
+        content.sound = .default
+        // 누를 동작이 없는 카테고리: 알림을 눌러도 '기록할까요?' 배너가 뜨지 않고 앱만 열린다.
+        content.categoryIdentifier = CommuteNotificationHandler.autoCategory
+        content.threadIdentifier = "commute"
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        let recordDate = Date(timeIntervalSince1970: entry.epoch / 1000.0)
+        content.userInfo = [
+            "auto": true,
+            "recordType": entry.type,
+            "date": entry.date,
+            "time": entry.time,
+            "timestamp": formatter.string(from: recordDate),
+            "epoch": entry.epoch
+        ]
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: "commute-auto-\(entry.id)",
+                                            content: content,
+                                            trigger: trigger)
+        center.add(request) { error in
+            if let error = error { CommuteStore.lastError = error.localizedDescription }
+        }
+        NotificationCenter.default.post(name: .commuteAutoRecordCreated,
+                                        object: nil,
+                                        userInfo: CommuteAutoRecordStore.payload(entry))
     }
 
     // MARK: Local notification
@@ -399,10 +491,15 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getNagStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "testNagNotification", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getForgetStatus", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "testForgetNotification", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "testForgetNotification", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "syncAutoRecordSettings", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getAutoRecordStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getAutoRecords", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "ackAutoRecords", returnType: CAPPluginReturnPromise)
     ]
 
     private var observer: NSObjectProtocol?
+    private var autoObserver: NSObjectProtocol?
 
     override public func load() {
         CommuteNotificationHandler.shared.start()
@@ -417,10 +514,20 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
             let payload = note.userInfo as? [String: Any] ?? [:]
             self.notifyListeners("commuteAction", data: payload)
         }
+        autoObserver = NotificationCenter.default.addObserver(forName: .commuteAutoRecordCreated,
+                                                              object: nil,
+                                                              queue: .main) { [weak self] note in
+            guard let self = self else { return }
+            let payload = note.userInfo as? [String: Any] ?? [:]
+            self.notifyListeners("autoRecord", data: payload)
+        }
     }
 
     deinit {
         if let observer = observer {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = autoObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -440,7 +547,8 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
             "location": locationAuthorizationString(manager.authorizationStatus),
             "notifications": notificationStatus,
             "monitoring": manager.isMonitoringRegion(),
-            "backgroundUpdates": manager.locationManager.allowsBackgroundLocationUpdates
+            "backgroundUpdates": manager.locationManager.allowsBackgroundLocationUpdates,
+            "autoRecord": CommuteAutoRecordStore.settingsPayload()
         ]
         if let geofence = CommuteStore.geofence {
             payload["geofence"] = [
@@ -618,6 +726,8 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
             let clockIn = call.getString("clockIn") ?? ""
             let clockOut = call.getString("clockOut") ?? ""
             let regularEnd = call.getString("regularEnd") ?? ""
+            // 자동 기록의 덮어쓰기 판단에도 같은 기록을 반영한다.
+            CommuteAutoRecordStore.merge(webClockIn: clockIn, webClockOut: clockOut, date: today)
             if clockIn.isEmpty && clockOut.isEmpty {
                 CommuteNagStore.day = nil
                 CommuteNagStore.clearSuppression()
@@ -672,6 +782,36 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         let delay = call.getDouble("delay") ?? 60
         CommuteForgetScheduler.scheduleTest(round: round, delay: delay)
         call.resolve(["scheduled": true, "round": round, "delay": delay])
+    }
+
+    // MARK: - 자동 출퇴근 기록
+
+    /// 설정 화면의 토글을 바로 `UserDefaults` 에 저장한다(앱이 꺼져 있어도 지오펜스가 읽음).
+    @objc func syncAutoRecordSettings(_ call: CAPPluginCall) {
+        var settings = CommuteAutoRecordStore.settings
+        if let value = call.getBool("autoClockIn") { settings.autoClockIn = value }
+        if let value = call.getBool("autoClockOut") { settings.autoClockOut = value }
+        CommuteAutoRecordStore.settings = settings
+        call.resolve(CommuteAutoRecordStore.status())
+    }
+
+    @objc func getAutoRecordStatus(_ call: CAPPluginCall) {
+        call.resolve(CommuteAutoRecordStore.status())
+    }
+
+    /// 앱이 꺼져 있는 동안 만들어진 자동 기록을 웹 레이어에 넘긴다(지우지 않음).
+    @objc func getAutoRecords(_ call: CAPPluginCall) {
+        call.resolve([
+            "records": CommuteAutoRecordStore.pending.map { CommuteAutoRecordStore.payload($0) },
+            "settings": CommuteAutoRecordStore.settingsPayload()
+        ])
+    }
+
+    /// 웹이 기록에 반영한 뒤 큐에서 지운다. 남은 건수를 돌려준다.
+    @objc func ackAutoRecords(_ call: CAPPluginCall) {
+        let ids = call.getArray("ids", String.self) ?? []
+        CommuteAutoRecordStore.acknowledge(ids: ids)
+        call.resolve(["remaining": CommuteAutoRecordStore.pending.count])
     }
 
     /// 설정 화면에 보여 줄 오늘의 독촉 계획(문구 포함).
