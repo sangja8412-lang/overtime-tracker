@@ -39,7 +39,7 @@
 		0AC0DE00000000000000000A /* OvertimeWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OvertimeWidgetBundle.swift; sourceTree = "<group>"; };
 		0AC0DE00000000000000000B /* OvertimeWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OvertimeWidget.swift; sourceTree = "<group>"; };
 		0AC0DE00000000000000000C /* RecordCommuteIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordCommuteIntent.swift; sourceTree = "<group>"; };
-		0AC0DE00000000000000000D /* CommuteWidgetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommuteWidgetState.swift; path = ../../native/geofence-commute/ios/Sources/GeofenceCommutePlugin/CommuteWidgetState.swift; sourceTree = "<group>"; };
+		0AC0DE00000000000000000D /* CommuteWidgetState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CommuteWidgetState.swift; path = ../../native/geofence-commute/ios/Sources/GeofenceCommutePlugin/CommuteWidgetState.swift; sourceTree = SOURCE_ROOT; };
 		0AC0DE00000000000000000E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0AC0DE00000000000000000F /* OvertimeWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OvertimeWidget.entitlements; sourceTree = "<group>"; };
 		0AC0DE000000000000000010 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
