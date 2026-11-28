@@ -10,6 +10,7 @@
 | `www/index.html` | 앱 웹 레이어. 기존 웹앱 기능(카피바라·골드 디자인, 즉시 출퇴근, 직접 입력·수정, 조기 출근/퇴근 후 초과근무, 달력, 월 합계, 엑셀 복사·CSV/JSON 저장) + 설정 탭 + 가져오기 + 알림 배너 |
 | `native/geofence-commute/` | 로컬 Capacitor 플러그인 `GeofenceCommute` (Swift). `CLLocationManager` 영역 감시 + `UNUserNotificationCenter` 로컬 알림 |
 | `ios/` | Capacitor iOS 프로젝트 (`com.kyeore.overtimetracker`) |
+| `ios/App/OvertimeWidget/` | 홈·잠금화면 위젯 익스텐션 `OvertimeWidgetExtension` (`com.kyeore.overtimetracker.widget`) |
 | `codemagic.yaml` | Codemagic 워크플로 (`ios-check` 시뮬레이터 빌드, `ios-release` TestFlight 업로드) |
 | `resources/icon.png` | 앱 아이콘 원본(1024) — `office-capybara.webp`에서 생성 |
 
@@ -35,6 +36,11 @@
 | `getAutoRecordStatus()` | 자동 기록 설정, 오늘 기록한 시각, 아직 반영 안 된 대기 기록 |
 | `getAutoRecords()` | 앱이 꺼져 있는 동안 만들어진 자동 기록 목록(가져가기만 하고 지우지 않음) |
 | `ackAutoRecords({ids})` | 웹이 기록에 반영한 뒤 대기 큐에서 지움 |
+| `syncWidgetState({payload})` | 오늘 기록 JSON을 App Group(`group.com.kyeore.overtimetracker`)에 쓰고 위젯 타임라인을 새로 고침 |
+| `getWidgetRecords()` | 위젯 버튼에서 찍어 둔 기록 목록(가져가기만 하고 지우지 않음) |
+| `ackWidgetRecords({ids})` | 웹이 기록에 반영한 뒤 위젯 대기 큐에서 지움 |
+| `reloadWidget()` | 위젯 타임라인만 새로 고침 |
+| `getWidgetStatus()` | App Group 사용 가능 여부, 오늘 위젯 상태(출근/퇴근 시각), 대기 건수 |
 | 이벤트 `commuteAction` | 앱이 떠 있는 상태에서 알림을 눌렀을 때 전달 |
 | 이벤트 `autoRecord` | 앱이 떠 있는 상태에서 자동 기록이 만들어졌을 때 전달 |
 
@@ -105,9 +111,23 @@ npx cap sync ios      # www → ios/App/App/public, 플러그인/Podfile 갱신
 - 앱을 처음 켰을 때 확인되는 기준선(이미 반경 안/밖)은 이동이 아니므로 자동 기록하지 않습니다.
 - 자동 기록 알림은 누를 동작이 없어, 눌러도 "기록할까요?" 배너가 뜨지 않고 앱만 열립니다.
 
+## 홈·잠금화면 위젯 + 애플워치 알림 버튼 (1.0 빌드 8)
+
+**위젯** (`ios/App/OvertimeWidget/`)
+- 홈화면 **소형·중형**, 잠금화면 **원형·직사각형**. 오늘 상태(미출근 / 근무 중·출근시각 / 퇴근 완료·출근~퇴근)를 그대로 보여 줍니다.
+- iOS 17+ 에서는 위젯 안의 **[출근 찍기] / [퇴근 찍기]** 버튼(`RecordCommuteIntent`)으로 앱을 열지 않고 바로 기록합니다. 이미 기록된 시각은 덮어쓰지 않습니다.
+- 위젯 버튼으로 찍은 기록은 App Group 대기 큐(`widget_pending_records`)에 쌓이고, 앱을 열거나 포그라운드로 돌아오면 오늘 기록에 반영한 뒤 야근 독촉·기록 깜빡 알림까지 다시 맞춥니다.
+- 앱에서 기록을 저장·자동기록·삭제하거나 정규 시간을 바꾸면 즉시 App Group 상태(`widget_state`)를 갱신하고 위젯을 새로 그립니다.
+
+**애플워치·잠금화면 알림 액션 버튼**
+- 출근 확인 알림은 카테고리 `COMMUTE_IN` → **[출근 찍기]** [기록하기] [나중에]
+- 퇴근 확인·야근 독촉·기록 깜빡 알림은 카테고리 `COMMUTE_OUT` → **[퇴근 찍기]** [기록하기] [나중에]
+- [출근 찍기]/[퇴근 찍기] 는 백그라운드 액션(`options: []`)이라 **앱을 열지 않고** 알림 시각으로 기록됩니다(이미 있으면 그대로 두고 안내만). 퇴근이면 남은 야근 독촉·기록 깜빡 알림을 즉시 취소하고 위젯도 새로 고칩니다.
+
 ## 검증
 
 ```bash
+python3 tests/verify-widget.py           # 위젯 저장소 규칙·App Group·알림 액션·웹 동기화 (헤드리스)
 python3 tests/verify-autorecord.py   # 자동 출퇴근 기록 규칙·대기 큐·웹 연동 (헤드리스)
 python3 tests/verify-native-config.py    # 정적 구성 검사
 python3 tests/verify-nag.py              # 문구 200개·예약/취소 규칙·웹 연동 (헤드리스)
