@@ -26,6 +26,9 @@
 | `getPendingAction()` | 앱이 꺼진 상태에서 알림을 눌렀을 때의 대기 payload (`type`, `timestamp`, `epoch`, `date`) |
 | `clearDelivered()` | 알림 센터에 남은 알림 정리 |
 | `testNotification({type, delay})` | 실제 이동 없이 같은 알림을 예약(알림 탭 → 입력 흐름 확인용) |
+| `syncCommuteNag({date, clockIn, clockOut, regularEnd, enabled})` | 오늘 출퇴근 기록과 정규 퇴근시간을 넘겨 **퇴근 독촉 알림** 예약을 다시 맞춤 |
+| `getNagStatus()` | 오늘의 독촉 상태(예약됨/출근 전/퇴근 완료/이탈/꺼짐)와 4회 문구·시각 |
+| `testNagNotification({round, delay})` | 1분 뒤 오늘 문구로 독촉 알림 테스트 |
 | 이벤트 `commuteAction` | 앱이 떠 있는 상태에서 알림을 눌렀을 때 전달 |
 
 알림 payload에는 `type`(`in`/`out`)과 알림 발생 시각(`timestamp` ISO8601, `epoch` ms, `date` yyyy-MM-dd)이 들어갑니다.
@@ -46,6 +49,32 @@ npx cap sync ios      # www → ios/App/App/public, 플러그인/Podfile 갱신
 
 출퇴근 기록은 `localStorage`(`ot.local.records`), 기본 시간은 `ot.local.settings`, 회사 위치는 `ot.geofence.v1` + iOS `UserDefaults`에 저장됩니다.
 서버·유료 지도 API를 쓰지 않습니다.
+
+## 퇴근 독촉 알림
+
+출근을 했는데 정규 퇴근시간(기본 17:30, 설정 탭에서 변경)이 지나도록 퇴근 기록이 없으면
+**+1시간, +2시간, +3시간, +4시간에 1시간 간격으로 총 4회** 잠금 화면 알림을 보냅니다.
+
+- 알림은 앱이 백그라운드·종료 상태여도 울리도록 `UNCalendarNotificationTrigger` 로 미리 예약합니다(앱을 꺼도 동작).
+- 출근은 **앱의 출근 기록** 또는 **회사 반경 진입**(지오펜스, 앱이 꺼져 있어도)으로 판단합니다.
+- 퇴근 기록을 저장하거나 회사 반경을 벗어나면 오늘 남은 독촉 알림을 **즉시 모두 취소**합니다.
+- 이미 지난 회차는 건너뛰고 남은 회차만 예약하며, 자정을 넘는 회차는 만들지 않습니다.
+- 알림을 누르면 앱이 열리고 **지금 시각**이 퇴근 칸에 채워집니다(저장은 사용자가 직접).
+
+### 문구 200개
+
+`CommuteNagCopy.swift` 에 4단계 × 50개 = **200개**가 들어 있고, 날짜 기반으로 골라
+하루 4개(단계별 1개)가 서로 다르고 **매일 문구가 달라집니다**(50일이면 200개를 모두 사용).
+날짜 인덱스는 2020-01-01 부터의 일수라서 하루만 넘어가도 항상 다른 문구가 나옵니다.
+
+## 검증
+
+```bash
+python3 tests/verify-native-config.py    # 정적 구성 검사
+python3 tests/verify-nag.py              # 문구 200개·예약/취소 규칙·웹 연동 (헤드리스)
+python3 tests/verify-ios-web.py          # 기존 기능 회귀 (헤드리스)
+python3 tests/verify-bridge-mock.py      # 가짜 네이티브 브리지 (헤드리스)
+```
 
 ## 기존 기록 가져오기
 

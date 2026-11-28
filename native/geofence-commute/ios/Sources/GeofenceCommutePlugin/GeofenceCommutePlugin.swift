@@ -131,6 +131,8 @@ public final class CommuteNotificationHandler: NSObject, UNUserNotificationCente
         if let epoch = info["epoch"] as? Double { payload["epoch"] = epoch }
         if let date = info["date"] as? String { payload["date"] = date }
         if let radius = info["radius"] as? Double { payload["radius"] = radius }
+        if let nag = info["nag"] as? Bool { payload["nag"] = nag }
+        if let round = info["round"] as? Int { payload["round"] = round }
         payload["action"] = response.actionIdentifier
 
         if payload["type"] != nil {
@@ -161,6 +163,11 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
 
     var authorizationStatus: CLAuthorizationStatus {
         locationManager.authorizationStatus
+    }
+
+    /// 마지막으로 확인된 회사 반경 안/밖 상태(앱이 종료돼 있던 동안의 값 포함).
+    var isCurrentlyInside: Bool {
+        CommuteStore.lastRegionState == "inside"
     }
 
     func startMonitoring(_ geofence: CommuteGeofence) {
@@ -271,11 +278,33 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    /// 지오펜스 진입/이탈을 퇴근 독촉 상태에 반영한다(앱이 백그라운드·종료 상태여도 호출됨).
+    private func updateNagState(inside: Bool) {
+        let today = CommuteNagPlanner.dayKey()
+        if inside {
+            CommuteNagStore.clearSuppression()
+            var day = CommuteNagStore.day
+            if day == nil || day!.date != today {
+                day = CommuteNagStore.Day(date: today,
+                                          clockIn: "",
+                                          clockOut: "",
+                                          regularEnd: CommuteNagStore.settings.regularEnd)
+            }
+            if day!.clockIn.isEmpty { day!.clockIn = CommuteNagPlanner.hhmm(Date()) }
+            CommuteNagStore.day = day
+        } else {
+            CommuteNagStore.suppress(date: today, reason: "geofenceExit")
+        }
+        CommuteNagScheduler.refresh()
+    }
+
     private func handleTransition(inside: Bool, baselineIfUnknown: Bool = false) {
         guard CommuteStore.geofence != nil else { return }
         let newState = inside ? "inside" : "outside"
         let previous = CommuteStore.lastRegionState
         CommuteStore.lastRegionState = newState
+        // 퇴근 독촉: 사무실에 있으면 출근으로 보고 예약하고, 반경을 벗어나면 오늘 독촉은 끈다.
+        updateNagState(inside: inside)
         if previous == nil {
             // First determination after install/save: this is the baseline, not a transition.
             if baselineIfUnknown { return }
@@ -347,7 +376,10 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "clearGeofence", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getPendingAction", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clearDelivered", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "testNotification", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "testNotification", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "syncCommuteNag", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getNagStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "testNagNotification", returnType: CAPPluginReturnPromise)
     ]
 
     private var observer: NSObjectProtocol?
@@ -355,6 +387,8 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         CommuteNotificationHandler.shared.start()
         CommuteGeofenceManager.shared.restoreMonitoring()
+        // 앱이 다시 열리면 오늘 남은 독촉 알림을 상태에 맞춰 다시 맞춘다.
+        CommuteNagScheduler.refresh()
         observer = NotificationCenter.default.addObserver(forName: .commuteActionTapped,
                                                           object: nil,
                                                           queue: .main) { [weak self] note in
@@ -544,5 +578,116 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         let delay = call.getDouble("delay") ?? 5
         CommuteGeofenceManager.shared.postNotification(type: type, at: Date(), delayed: delay)
         call.resolve(["scheduled": true, "type": type, "delay": delay])
+    }
+
+    // MARK: - 퇴근 독촉 알림
+
+    /// 웹앱의 오늘 기록(출근·퇴근·정규 퇴근시간)과 설정을 받아 독촉 예약을 다시 맞춘다.
+    /// 앱이 꺼져 있을 때는 지오펜스 진입/이탈이 같은 일을 대신한다.
+    @objc func syncCommuteNag(_ call: CAPPluginCall) {
+        var settings = CommuteNagStore.settings
+        if let enabled = call.getBool("enabled") { settings.enabled = enabled }
+        if let regularEnd = call.getString("regularEnd"), !regularEnd.isEmpty { settings.regularEnd = regularEnd }
+        CommuteNagStore.settings = settings
+
+        let today = CommuteNagPlanner.dayKey()
+        let requestedDay = call.getString("date") ?? today
+        if requestedDay == today {
+            let clockIn = call.getString("clockIn") ?? ""
+            let clockOut = call.getString("clockOut") ?? ""
+            let regularEnd = call.getString("regularEnd") ?? ""
+            if clockIn.isEmpty && clockOut.isEmpty {
+                CommuteNagStore.day = nil
+                CommuteNagStore.clearSuppression()
+            } else {
+                var day = CommuteNagStore.day
+                if day == nil || day!.date != today {
+                    day = CommuteNagStore.Day(date: today,
+                                              clockIn: "",
+                                              clockOut: "",
+                                              regularEnd: regularEnd.isEmpty ? settings.regularEnd : regularEnd)
+                }
+                day!.clockIn = clockIn
+                day!.clockOut = clockOut
+                day!.regularEnd = regularEnd.isEmpty ? settings.regularEnd : regularEnd
+                CommuteNagStore.day = day
+                if !clockOut.isEmpty {
+                    CommuteNagStore.suppress(date: today, reason: "clockOut")
+                } else if CommuteNagStore.suppressionReason(date: today) == "clockOut" {
+                    // 퇴근 기록을 지웠다면 다시 독촉한다.
+                    CommuteNagStore.clearSuppression()
+                }
+            }
+        }
+        CommuteNagScheduler.refresh()
+        var payload = nagPayload()
+        payload["saved"] = true
+        call.resolve(payload)
+    }
+
+    @objc func getNagStatus(_ call: CAPPluginCall) {
+        call.resolve(nagPayload())
+    }
+
+    @objc func testNagNotification(_ call: CAPPluginCall) {
+        let round = call.getInt("round") ?? 1
+        let delay = call.getDouble("delay") ?? 60
+        CommuteNagScheduler.scheduleTest(round: round, delay: delay)
+        call.resolve(["scheduled": true, "round": round, "delay": delay])
+    }
+
+    /// 설정 화면에 보여 줄 오늘의 독촉 계획(문구 포함).
+    private func nagPayload(now: Date = Date()) -> [String: Any] {
+        let settings = CommuteNagStore.settings
+        let today = CommuteNagPlanner.dayKey(now)
+        let day = CommuteNagStore.day
+        let sameDay = day != nil && day!.date == today
+        let clockIn = sameDay ? (day?.clockIn ?? "") : ""
+        let clockOut = sameDay ? (day?.clockOut ?? "") : ""
+        let storedEnd = sameDay ? (day?.regularEnd ?? "") : ""
+        let regularEndText = storedEnd.isEmpty ? settings.regularEnd : storedEnd
+        let regularEndMinutes = CommuteNagPlanner.minutes(from: regularEndText) ?? (17 * 60 + 30)
+
+        var rounds: [[String: Any]] = []
+        for index in 1...CommuteNagPlanner.roundCount {
+            let fireMinutes = regularEndMinutes + CommuteNagPlanner.intervalMinutes * index
+            guard let fireDate = CommuteNagPlanner.date(day: today, minutes: fireMinutes) else { continue }
+            rounds.append([
+                "round": index,
+                "time": CommuteNagPlanner.hhmm(fireDate),
+                "phrase": CommuteNagCopy.phrase(day: today, round: index),
+                "passed": fireDate.timeIntervalSince(now) <= 0
+            ])
+        }
+
+        let insideNow = CommuteGeofenceManager.shared.isCurrentlyInside
+        var state = "waitingClockIn"
+        if !settings.enabled {
+            state = "disabled"
+        } else if !clockOut.isEmpty {
+            state = "clockedOut"
+        } else if CommuteNagStore.suppressionReason(date: today) == "geofenceExit", !insideNow {
+            state = "leftOffice"
+        } else if !clockIn.isEmpty || insideNow {
+            state = "scheduled"
+        }
+
+        let planned = state == "scheduled"
+            ? CommuteNagPlanner.rounds(day: today, regularEndMinutes: regularEndMinutes, now: now)
+            : []
+
+        return [
+            "enabled": settings.enabled,
+            "date": today,
+            "regularEnd": regularEndText,
+            "clockIn": clockIn,
+            "clockOut": clockOut,
+            "state": state,
+            "rounds": rounds,
+            "scheduled": planned.map { $0.round },
+            "scheduledTimes": planned.map { CommuteNagPlanner.hhmm($0.fireDate) },
+            "nextTime": planned.first.map { CommuteNagPlanner.hhmm($0.fireDate) } ?? "",
+            "totalPhrases": CommuteNagCopy.totalCount
+        ]
     }
 }

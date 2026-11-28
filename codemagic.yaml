@@ -31,6 +31,8 @@ workflows:
         XCODE_WORKSPACE: App.xcworkspace
         XCODE_SCHEME: App
         APP_STORE_APP_ID: "6839007688"
+        # TestFlight 빌드 번호(1.0 (5)). 한 번 올린 번호는 다시 쓸 수 없다.
+        APP_BUILD_NUMBER: "5"
     scripts:
       - name: 의존성 설치
         script: |
@@ -52,7 +54,9 @@ workflows:
         script: |
           set -e
           cd ios/App
-          if [ -n "${BUILD_NUMBER:-}" ]; then
+          if [ -n "${APP_BUILD_NUMBER:-}" ]; then
+            BUILD="$APP_BUILD_NUMBER"
+          elif [ -n "${BUILD_NUMBER:-}" ]; then
             BUILD="$BUILD_NUMBER"
           else
             BUILD="$(date -u +%Y%m%d%H%M)"
@@ -62,6 +66,10 @@ workflows:
           agvtool new-version -all "$BUILD" >/dev/null 2>&1 || true
           echo "CFBundleVersion=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' App/Info.plist)"
           echo "CFBundleShortVersionString=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' App/Info.plist)"
+          if [ "$BUILD" != "5" ]; then
+            echo "빌드 번호가 5가 아니에요: $BUILD" >&2
+            exit 1
+          fi
 
       - name: IPA 빌드
         script: |

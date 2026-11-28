@@ -135,6 +135,14 @@ details summary{cursor:pointer;font-weight:700;color:#432e13;font-size:14px;padd
 </section>
 
 <section class="card">
+  <h2>퇴근 독촉 알림<span id="nagTag" class="tag" hidden>예약됨</span></h2>
+  <p class="muted" style="margin:0 0 10px;line-height:1.5">출근하고 정규 퇴근시간이 지나도 퇴근 기록이 없으면 <b>1시간마다 총 4회</b>, 잠금 화면으로 알려 드려요. 문구는 매일 달라져요(200개 중 오늘 4개).</p>
+  <label class="check"><input id="nagEnabled" type="checkbox"> 퇴근 독촉 알림 받기</label>
+  <div id="nagPlan" class="hint-box">앱을 열면 오늘의 독촉 계획을 보여 드려요.</div>
+  <div class="btns" style="margin-top:10px"><button class="secondary" id="nagTest">1분 뒤 독촉 테스트</button></div>
+</section>
+
+<section class="card">
   <h2>알림 테스트</h2>
   <div class="btns"><button class="secondary" id="testIn">출근 알림 테스트</button><button class="secondary" id="testOut">퇴근 알림 테스트</button></div>
   <p class="muted" style="margin:10px 0 0">5초 뒤 알림이 떠요. 잠금 화면에서 알림을 눌러 보면 알림 시각이 입력칸에 채워지고, 저장을 눌러야 기록됩니다.</p>
@@ -382,6 +390,7 @@ function persist(message) {
   records[k]={...r,overtime:total(r),updatedAt:new Date().toISOString()};
   save();
   refresh();
+  syncNag();
   feedback.textContent=message;
   if (pendingAction) {
     hideBanner();
@@ -403,7 +412,7 @@ function quickRecord(input,label) {
 $('quickStart').onclick=()=>quickRecord(startTime,'출근');
 $('quickBtn').onclick=()=>quickRecord(actualEnd,'퇴근');
 $('saveBtn').onclick=()=>persist('기록을 저장했어요.');
-$('deleteBtn').onclick=()=>{const k=dateInput.value;if(records[k]&&confirm('삭제할까요?')){delete records[k];save();loadDate(k);refresh();}};
+$('deleteBtn').onclick=()=>{const k=dateInput.value;if(records[k]&&confirm('삭제할까요?')){delete records[k];save();loadDate(k);refresh();syncNag();}};
 dateInput.onchange=()=>{if(dateInput.value) loadDate(dateInput.value);};
 for(const input of [startTime,actualEnd,regularStart,regularEnd]) input.oninput=hero;
 $('fromDate').onchange=preview;$('toDate').onchange=preview;
@@ -567,7 +576,7 @@ $('importPaste').onclick=()=>importText($('importText').value,'붙여넣은 표'
 
 /* ---------- 설정: 기본 시간 ---------- */
 $('defaultStart').value=settings.startTime;$('defaultEnd').value=settings.regularEnd;
-$('saveSettings').onclick=()=>{settings={startTime:$('defaultStart').value||'08:30',regularEnd:$('defaultEnd').value||'17:30'};localStorage.setItem(SKEY,JSON.stringify(settings));alert('저장했어요.')};
+$('saveSettings').onclick=()=>{settings={startTime:$('defaultStart').value||'08:30',regularEnd:$('defaultEnd').value||'17:30'};localStorage.setItem(SKEY,JSON.stringify(settings));syncNag();alert('저장했어요.')};
 
 /* ---------- 설정: 회사 위치 · 권한 · 알림 ---------- */
 const GEO_KEY='ot.geofence.v1';
@@ -687,6 +696,69 @@ async function testNotification(type){
   } catch(e) { alert('테스트 알림을 보내지 못했어요: '+e.message); }
 }
 
+/* ---------- 설정: 퇴근 독촉 알림 (1시간마다 총 4회, 매일 다른 문구) ---------- */
+const NAG_KEY='ot.nag.v1';
+let nagSettings=Object.assign({enabled:true},JSON.parse(localStorage.getItem(NAG_KEY)||'{}'));
+let nagStatus=null;
+$('nagEnabled').checked=nagSettings.enabled!==false;
+const NAG_STATE_TEXT={
+  scheduled:'오늘 퇴근 독촉을 예약했어요.',
+  waitingClockIn:'출근 기록이 저장되면 독촉 알림을 예약해요.',
+  clockedOut:'오늘 퇴근 기록이 있어서 독촉하지 않아요.',
+  leftOffice:'회사 반경을 벗어나서 오늘 독촉은 꺼 두었어요.',
+  disabled:'퇴근 독촉 알림이 꺼져 있어요.'
+};
+function renderNag(st){
+  if(st) nagStatus=st;
+  const box=$('nagPlan'), tag=$('nagTag');
+  if(!isNative()){
+    box.textContent='아이폰 앱에서 동작해요. 출근하고 정규 퇴근시간이 지나면 1시간마다 총 4회, 매일 다른 귀여운 문구로 알려 드려요.';
+    tag.hidden=true;
+    return;
+  }
+  const s=nagStatus;
+  if(!s){ box.textContent='앱 상태를 아직 읽지 못했어요. 위의 [상태 새로고침]을 눌러 보세요.'; tag.hidden=true; return; }
+  tag.hidden=s.state!=='scheduled';
+  const lines=[];
+  lines.push('<b>'+(s.clockIn?'출근 '+s.clockIn:'출근 기록 없음')+(s.clockOut?' · 퇴근 '+s.clockOut:' · 퇴근 전')+'</b>');
+  if(NAG_STATE_TEXT[s.state]) lines.push(NAG_STATE_TEXT[s.state]);
+  if(s.state==='scheduled'&&s.nextTime) lines.push('다음 독촉 '+s.nextTime+' · 정규 퇴근 '+s.regularEnd);
+  else if(s.regularEnd) lines.push('정규 퇴근 '+s.regularEnd);
+  if(Array.isArray(s.rounds)){
+    for(const r of s.rounds) lines.push('· '+r.time+' — '+r.phrase+(r.passed?' (지남)':''));
+  }
+  box.innerHTML=lines.join('<br>');
+}
+async function syncNag(){
+  if(!isNative()){ renderNag(null); return; }
+  const P=plugin('GeofenceCommute');
+  if(!P||typeof P.syncCommuteNag!=='function'){ renderNag(null); return; }
+  const k=today(), r=records[k]||{};
+  const payload={
+    date:k,
+    clockIn:r.startTime||'',
+    clockOut:r.actualEnd||'',
+    regularEnd:r.regularEnd||settings.regularEnd||'17:30',
+    enabled:$('nagEnabled').checked
+  };
+  try { nagStatus=await P.syncCommuteNag(payload); renderNag(nagStatus); }
+  catch(e) { renderNag(null); }
+}
+$('nagEnabled').onchange=()=>{
+  nagSettings={enabled:$('nagEnabled').checked};
+  localStorage.setItem(NAG_KEY,JSON.stringify(nagSettings));
+  syncNag();
+};
+$('nagTest').onclick=async()=>{
+  if(!isNative()){ alert('아이폰 앱에서 동작해요.'); return; }
+  const P=plugin('GeofenceCommute');
+  if(!P||typeof P.testNagNotification!=='function'){ alert('앱을 새 빌드로 다시 설치해 주셔야 테스트할 수 있어요.'); return; }
+  try {
+    await P.testNagNotification({round:1,delay:60});
+    alert('1분 뒤 오늘의 퇴근 독촉 문구로 알림이 떠요.\n잠금 화면에서 눌러 보세요. 누르면 지금 시각으로 퇴근 칸이 채워집니다.');
+  } catch(e) { alert('테스트 알림을 보내지 못했어요: '+e.message); }
+};
+
 /* ---------- 알림 탭 → 입력 화면 ---------- */
 function hideBanner(){ pendingAction=null; $('actionBanner').hidden=true; $('bannerApply').hidden=true; }
 $('bannerClose').onclick=hideBanner;
@@ -708,8 +780,9 @@ function toPayloadTime(payload){
 }
 function handleCommuteAction(payload){
   if(!payload||!payload.type) return;
-  const when=toPayloadTime(payload);
-  const dateK=payload.date||dkey(when);
+  const isNag=!!payload.nag;
+  const when=isNag?new Date():toPayloadTime(payload);
+  const dateK=isNag?dkey(when):(payload.date||dkey(when));
   const timeStr=pad(when.getHours())+':'+pad(when.getMinutes());
   const isOut=payload.type==='out';
   const field=isOut?actualEnd:startTime;
@@ -721,13 +794,15 @@ function handleCommuteAction(payload){
   if(!existing){ field.value=timeStr; hero(); state='filled'; }
   else if(existing===timeStr){ state='same'; }
   else { state='kept'; }
-  pendingAction={type:payload.type,timeStr,dateK,state,existingTime:existing};
-  const title=isOut?`🔔 퇴근 알림 · ${timeStr}`:`🔔 출근 알림 · ${timeStr}`;
+  pendingAction={type:payload.type,timeStr,dateK,state,existingTime:existing,nag:isNag};
+  const title=isNag?`🦫 퇴근 독촉 · ${timeStr}`:(isOut?`🔔 퇴근 알림 · ${timeStr}`:`🔔 출근 알림 · ${timeStr}`);
   $('bannerTitle').textContent=title;
   const dayLabel=dateK===today()?'오늘':new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',weekday:'short'}).format(when);
   let msg;
   if(state==='filled'){
-    msg=`${dayLabel} ${isOut?'퇴근':'출근'} 시간을 알림 시각(${timeStr})으로 채웠어요. 확인하고 [기록 저장]을 눌러야 저장됩니다.`;
+    msg=isNag
+      ? `${dayLabel} 퇴근 칸을 지금 시각(${timeStr})으로 채웠어요. 실제로 나선 시각으로 고친 뒤 [기록 저장]을 눌러 주세요.`
+      : `${dayLabel} ${isOut?'퇴근':'출근'} 시간을 알림 시각(${timeStr})으로 채웠어요. 확인하고 [기록 저장]을 눌러야 저장됩니다.`;
   } else if(state==='same'){
     msg=`이미 ${timeStr}이 입력되어 있어요. 저장을 누르면 확정됩니다.`;
   } else {
@@ -751,8 +826,9 @@ async function initNative(){
     P.addListener('commuteAction',data=>{ if(data&&data.type) handleCommuteAction(data); });
   } catch(e) {}
   refreshStatus();
+  syncNag();
 }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ refreshStatus(); drainPending(); } });
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ refreshStatus(); drainPending(); syncNag(); } });
 async function drainPending(){
   if(!isNative()) return;
   const P=plugin('GeofenceCommute');
@@ -765,12 +841,12 @@ async function drainPending(){
 
 /* ---------- 초기화 ---------- */
 const n0=new Date();$('fromDate').value=`${n0.getFullYear()}-${pad(n0.getMonth()+1)}-01`;$('toDate').value=dkey(new Date(n0.getFullYear(),n0.getMonth()+1,0));
-fillGeofenceForm();loadDate(today());refresh();renderPerm();
+fillGeofenceForm();loadDate(today());refresh();renderPerm();renderNag(null);
 $('appVersion').textContent='1.0';
 initNative();
 try { if(isNative()){ const App=plugin('App'); if(App&&App.getInfo){ App.getInfo().then(i=>{$('appVersion').textContent=`${i.version} (${i.build})`;}).catch(()=>{}); } } } catch(e) {}
 if(!isNative()&&'serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 
 /* 헤드리스 검증용 (앱 동작에는 영향 없음) */
-window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist};
+window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist,syncNag,renderNag,get nagStatus(){return nagStatus},get nagSettings(){return nagSettings}};
 </script></body></html>
