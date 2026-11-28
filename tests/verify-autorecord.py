@@ -5,7 +5,7 @@
  A. 규칙(순수 계산): 자동 출근/자동 퇴근이 켜졌을 때만 기록, 이미 기록된 시각은 덮어쓰지 않음,
     자동 퇴근은 출근 기록이 있을 때만, 자동 퇴근 시 독촉·깜빡 알림 취소
  B. 정적 검사: 플러그인 메서드 4개·UserDefaults 기본 OFF·자동 기록 문구·기준선 미기록·
-    종료 상태 대기 큐·웹 화면(토글 2개·기본 OFF)/빌드 번호 7
+    종료 상태 대기 큐·웹 화면(토글 2개·기본 OFF)/빌드 번호 8
  C. 헤드리스 Chromium + 가짜 네이티브:
     - 토글 기본 OFF, 켜면 syncAutoRecordSettings 로 즉시 동기화
     - 앱이 꺼져 있는 동안 만들어진 기록(대기 큐)을 앱 시작 시 기록에 반영하고 큐에서 지움
@@ -274,10 +274,11 @@ def static_checks():
           and 'syncNag();' in html)
 
     cm = read('codemagic.yaml')
-    check('codemagic: 빌드 번호 7 고정', 'APP_BUILD_NUMBER: "7"' in cm and '$BUILD" != "7"' in cm)
+    check('codemagic: 빌드 번호 8 고정', 'APP_BUILD_NUMBER: "8"' in cm and '$BUILD" != "8"' in cm)
     pbx = read('ios/App/App.xcodeproj/project.pbxproj')
-    check('Xcode: CURRENT_PROJECT_VERSION = 7', pbx.count('CURRENT_PROJECT_VERSION = 7;') == 2)
-    check('Xcode: MARKETING_VERSION = 1.0', pbx.count('MARKETING_VERSION = 1.0;') == 2)
+    check('Xcode: CURRENT_PROJECT_VERSION = 8 (앱·위젯)', pbx.count('CURRENT_PROJECT_VERSION = 8;') >= 2
+          and 'CURRENT_PROJECT_VERSION = 7;' not in pbx)
+    check('Xcode: MARKETING_VERSION = 1.0 (앱·위젯)', pbx.count('MARKETING_VERSION = 1.0;') >= 2)
 
 
 FAKE = r"""

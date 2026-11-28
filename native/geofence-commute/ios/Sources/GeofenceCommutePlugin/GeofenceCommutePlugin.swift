@@ -97,6 +97,12 @@ public final class CommuteNotificationHandler: NSObject, UNUserNotificationCente
     public static let shared = CommuteNotificationHandler()
     /// 자동 기록 완료 알림용 카테고리(누를 동작 없이 앱만 열린다).
     public static let autoCategory = "COMMUTE_AUTO"
+    /// 출근 확인 알림(출근 찍기 버튼)
+    public static let clockInCategory = "COMMUTE_IN"
+    /// 퇴근 확인·야근 독촉·기록 깜빡 알림(퇴근 찍기 버튼)
+    public static let clockOutCategory = "COMMUTE_OUT"
+    /// build 7 이전에 예약된 알림이 쓰던 카테고리(퇴근 찍기 버튼을 그대로 단다)
+    public static let legacyCategory = "COMMUTE"
 
     private var started = false
 
@@ -105,17 +111,56 @@ public final class CommuteNotificationHandler: NSObject, UNUserNotificationCente
         started = true
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        let record = UNNotificationAction(identifier: "RECORD", title: "기록하기", options: [.foreground])
-        let later = UNNotificationAction(identifier: "LATER", title: "나중에", options: [])
-        let category = UNNotificationCategory(identifier: "COMMUTE",
-                                              actions: [record, later],
-                                              intentIdentifiers: [],
-                                              options: [])
+        // [출근 찍기] / [퇴근 찍기] 는 백그라운드 액션(options: [])이라
+        // 애플워치에서 버튼만 눌러도 앱을 열지 않고 기록이 남는다.
+        let clockIn = UNNotificationAction(identifier: CommuteNotificationAction.clockIn,
+                                           title: "출근 찍기",
+                                           options: [])
+        let clockOut = UNNotificationAction(identifier: CommuteNotificationAction.clockOut,
+                                            title: "퇴근 찍기",
+                                            options: [])
+        let record = UNNotificationAction(identifier: CommuteNotificationAction.record,
+                                          title: "기록하기",
+                                          options: [.foreground])
+        let later = UNNotificationAction(identifier: CommuteNotificationAction.later,
+                                         title: "나중에",
+                                         options: [])
+        let inCategory = UNNotificationCategory(identifier: Self.clockInCategory,
+                                                actions: [clockIn, record, later],
+                                                intentIdentifiers: [],
+                                                options: [])
+        let outCategory = UNNotificationCategory(identifier: Self.clockOutCategory,
+                                                 actions: [clockOut, record, later],
+                                                 intentIdentifiers: [],
+                                                 options: [])
+        let legacy = UNNotificationCategory(identifier: Self.legacyCategory,
+                                            actions: [clockOut, record, later],
+                                            intentIdentifiers: [],
+                                            options: [])
         let auto = UNNotificationCategory(identifier: Self.autoCategory,
                                           actions: [],
                                           intentIdentifiers: [],
                                           options: [])
-        center.setNotificationCategories([category, auto])
+        center.setNotificationCategories([inCategory, outCategory, legacy, auto])
+    }
+
+    /// 액션으로 찍으려 했지만 그 시각이 이미 기록되어 있을 때 조용히 알려 준다.
+    /// (카테고리 COMMUTE_AUTO 라서 누를 동작은 없다)
+    public func recordKeptNotice(type: String, time: String) {
+        let center = UNUserNotificationCenter.current()
+        let content = UNMutableNotificationContent()
+        content.title = "🦫 퇴근했니?"
+        content.body = type == "in"
+            ? "이미 \(time) 출근 기록이 있어서 그대로 두었어요."
+            : "이미 \(time) 퇴근 기록이 있어서 그대로 두었어요."
+        content.sound = .default
+        content.categoryIdentifier = Self.autoCategory
+        content.threadIdentifier = "commute"
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        center.add(UNNotificationRequest(identifier: "commute-kept-\(type)-\(Int(Date().timeIntervalSince1970))",
+                                         content: content,
+                                         trigger: trigger),
+                   withCompletionHandler: nil)
     }
 
     // Show the banner even while the app is in the foreground (잠금 화면과 동일한 문구).
@@ -133,6 +178,12 @@ public final class CommuteNotificationHandler: NSObject, UNUserNotificationCente
             return
         }
         let info = response.notification.request.content.userInfo
+        // 애플워치·잠금화면의 [출근 찍기] / [퇴근 찍기]: 앱을 열지 않고 바로 기록한다.
+        if let quickType = CommuteNotificationAction.type(for: response.actionIdentifier) {
+            CommuteActionRecorder.record(type: quickType, userInfo: info)
+            completionHandler()
+            return
+        }
         var payload: [String: Any] = [:]
         if let type = info["type"] as? String { payload["type"] = type }
         if let timestamp = info["timestamp"] as? String { payload["timestamp"] = timestamp }
@@ -424,6 +475,12 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
         NotificationCenter.default.post(name: .commuteAutoRecordCreated,
                                         object: nil,
                                         userInfo: CommuteAutoRecordStore.payload(entry))
+        // 자동 기록도 위젯에 바로 보이게 맞춘다.
+        let dayState = CommuteAutoRecordStore.dayState(for: entry.date)
+        if entry.date == CommuteWidgetStore.todayKey() {
+            CommuteWidgetStore.applyWeb(clockIn: dayState.clockIn, clockOut: dayState.clockOut)
+            CommuteWidgetCenter.reload()
+        }
     }
 
     // MARK: Local notification
@@ -439,7 +496,10 @@ final class CommuteGeofenceManager: NSObject, CLLocationManagerDelegate {
             content.body = "회사 반경에서 나왔어요. 퇴근 기록할까요?"
         }
         content.sound = .default
-        content.categoryIdentifier = "COMMUTE"
+        // 출근 확인 알림에는 [출근 찍기], 퇴근 확인 알림에는 [퇴근 찍기] 버튼을 단다.
+        content.categoryIdentifier = type == "in"
+            ? CommuteNotificationHandler.clockInCategory
+            : CommuteNotificationHandler.clockOutCategory
         content.threadIdentifier = "commute"
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
@@ -495,7 +555,12 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "syncAutoRecordSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getAutoRecordStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getAutoRecords", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "ackAutoRecords", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "ackAutoRecords", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "syncWidgetState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getWidgetRecords", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "ackWidgetRecords", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "reloadWidget", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getWidgetStatus", returnType: CAPPluginReturnPromise)
     ]
 
     private var observer: NSObjectProtocol?
@@ -754,6 +819,14 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         CommuteNagScheduler.refresh()
         // 퇴근 기록이 저장되면 남은 '기록 깜빡' 알림을 즉시 지운다.
         CommuteForgetScheduler.refresh()
+        // 위젯도 같은 오늘 기록을 보도록 맞춘다.
+        if requestedDay == today {
+            CommuteWidgetStore.applyWeb(clockIn: call.getString("clockIn") ?? "",
+                                        clockOut: call.getString("clockOut") ?? "",
+                                        regularStart: call.getString("regularStart") ?? "",
+                                        regularEnd: call.getString("regularEnd") ?? "")
+            CommuteWidgetCenter.reload()
+        }
         var payload = nagPayload()
         payload["saved"] = true
         payload["forget"] = CommuteForgetScheduler.status()
@@ -812,6 +885,50 @@ public class GeofenceCommutePlugin: CAPPlugin, CAPBridgedPlugin {
         let ids = call.getArray("ids", String.self) ?? []
         CommuteAutoRecordStore.acknowledge(ids: ids)
         call.resolve(["remaining": CommuteAutoRecordStore.pending.count])
+    }
+
+    // MARK: - 홈·잠금화면 위젯(1.0 빌드 8)
+
+    /// 웹의 오늘 기록을 App Group 저장소에 쓰고 위젯을 새로 고친다.
+    @objc func syncWidgetState(_ call: CAPPluginCall) {
+        guard let payload = call.getString("payload"), !payload.isEmpty else {
+            call.reject("payload가 비어 있어요", "INVALID_ARGUMENT")
+            return
+        }
+        guard let defaults = CommuteWidgetShared.defaults else {
+            call.reject("App Group 저장소를 열 수 없어요 (\(CommuteWidgetShared.appGroupId))", "APP_GROUP_UNAVAILABLE")
+            return
+        }
+        // 웹이 만든 JSON을 그대로 보관한다(위젯이 같은 구조로 디코드한다).
+        defaults.set(payload, forKey: CommuteWidgetShared.stateKey)
+        CommuteWidgetCenter.reload()
+        var result = CommuteWidgetStore.status()
+        result["saved"] = true
+        call.resolve(result)
+    }
+
+    /// 위젯 버튼에서 찍어 둔 기록을 웹에 넘긴다(지우지 않음).
+    @objc func getWidgetRecords(_ call: CAPPluginCall) {
+        call.resolve([
+            "records": CommuteWidgetStore.pending().map { CommuteWidgetStore.payload($0) },
+            "state": CommuteWidgetStore.status()
+        ])
+    }
+
+    /// 웹이 기록에 반영한 뒤 큐에서 지운다.
+    @objc func ackWidgetRecords(_ call: CAPPluginCall) {
+        let ids = call.getArray("ids", String.self) ?? []
+        CommuteWidgetStore.acknowledge(ids: ids)
+        call.resolve(["remaining": CommuteWidgetStore.pending().count])
+    }
+
+    @objc func reloadWidget(_ call: CAPPluginCall) {
+        CommuteWidgetCenter.reload()
+        call.resolve(["reloaded": true])
+    }
+
+    @objc func getWidgetStatus(_ call: CAPPluginCall) {
+        call.resolve(CommuteWidgetStore.status())
     }
 
     /// 설정 화면에 보여 줄 오늘의 독촉 계획(문구 포함).

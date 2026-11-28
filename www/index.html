@@ -187,7 +187,7 @@ details summary{cursor:pointer;font-weight:700;color:#432e13;font-size:14px;padd
 const KEY='ot.local.records',SKEY='ot.local.settings';
 let records=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('ot.v2.records')||localStorage.getItem('overtimeTracker.v1.records')||'{}');
 let settings=JSON.parse(localStorage.getItem(SKEY)||'{"startTime":"08:30","regularEnd":"17:30"}');
-const $=x=>document.getElementById(x),pad=n=>String(n).padStart(2,'0'),dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>dkey(new Date()),min=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m},fmt=m=>`${Math.floor((m||0)/60)}시간 ${(m||0)%60}분`,short=m=>{if(!m)return'0h';let h=Math.floor(m/60),mm=m%60;return mm?`${h}h ${mm}m`:`${h}h`},save=()=>localStorage.setItem(KEY,JSON.stringify(records));
+const $=x=>document.getElementById(x),pad=n=>String(n).padStart(2,'0'),dkey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,today=()=>dkey(new Date()),min=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m},fmt=m=>`${Math.floor((m||0)/60)}시간 ${(m||0)%60}분`,short=m=>{if(!m)return'0h';let h=Math.floor(m/60),mm=m%60;return mm?`${h}h ${mm}m`:`${h}h`},save=()=>{localStorage.setItem(KEY,JSON.stringify(records));syncWidget();};
 const dateInput=$('dateInput'), regularStart=$('regularStart'), regularEnd=$('regularEnd');
 const startTime=$('startTime'), actualEnd=$('actualEnd'), memo=$('memo');
 
@@ -592,7 +592,7 @@ $('importPaste').onclick=()=>importText($('importText').value,'붙여넣은 표'
 
 /* ---------- 설정: 기본 시간 ---------- */
 $('defaultStart').value=settings.startTime;$('defaultEnd').value=settings.regularEnd;
-$('saveSettings').onclick=()=>{settings={startTime:$('defaultStart').value||'08:30',regularEnd:$('defaultEnd').value||'17:30'};localStorage.setItem(SKEY,JSON.stringify(settings));syncNag();alert('저장했어요.')};
+$('saveSettings').onclick=()=>{settings={startTime:$('defaultStart').value||'08:30',regularEnd:$('defaultEnd').value||'17:30'};localStorage.setItem(SKEY,JSON.stringify(settings));syncNag();syncWidget();alert('저장했어요.')};
 
 /* ---------- 설정: 회사 위치 · 권한 · 알림 ---------- */
 const GEO_KEY='ot.geofence.v1';
@@ -836,6 +836,46 @@ function handleAutoRecordPush(data){
   refreshAutoStatus();
 }
 
+/* ---------- 홈·잠금화면 위젯 (1.0 빌드 8) ---------- */
+/* 앱 기록을 App Group 저장소에 밀어 넣어 위젯이 같은 오늘 상태를 보게 한다. */
+function widgetPayload(){
+  const k=today(), r=records[k]||{};
+  return JSON.stringify({
+    date:k,
+    clockIn:r.startTime||'',
+    clockOut:r.actualEnd||'',
+    regularStart:r.regularStart||settings.startTime||'08:30',
+    regularEnd:r.regularEnd||settings.regularEnd||'17:30',
+    updatedAt:new Date().toISOString()
+  });
+}
+async function syncWidget(){
+  if(!isNative()) return;
+  const P=plugin('GeofenceCommute');
+  if(!P||typeof P.syncWidgetState!=='function') return;
+  try { await P.syncWidgetState({payload:widgetPayload()}); } catch(e){}
+}
+/* 위젯에서 찍은 기록을 오늘 기록에 반영하고 큐에서 지운다(이미 기록된 시각은 안 덮어씀). */
+async function drainWidgetRecords(){
+  if(!isNative()) return;
+  const P=plugin('GeofenceCommute');
+  if(!P||typeof P.getWidgetRecords!=='function') return;
+  let res;
+  try { res=await P.getWidgetRecords(); } catch(e){ return; }
+  const list=(res&&res.records)||[];
+  if(!list.length){ return; }
+  const ack=[],applied=[];
+  for(const evt of list){
+    const result=applyAutoRecord(evt);
+    if(result==='retry') continue;
+    ack.push(evt.id);
+    if(result==='applied') applied.push(evt);
+  }
+  if(applied.length) finishAutoRecords(applied);
+  if(ack.length&&typeof P.ackWidgetRecords==='function'){ try{ await P.ackWidgetRecords({ids:ack}); }catch(e){} }
+  syncWidget();
+}
+
 /* ---------- 설정: 퇴근 독촉 알림 (1시간마다 총 4회, 매일 다른 문구) ---------- */
 const NAG_KEY='ot.nag.v1';
 let nagSettings=Object.assign({enabled:true},JSON.parse(localStorage.getItem(NAG_KEY)||'{}'));
@@ -1021,18 +1061,22 @@ async function initNative(){
   } catch(e) {}
   refreshStatus();
   await refreshAutoStatus();
+  await drainWidgetRecords();
   await drainAutoRecords();
   syncNag();
   syncForget();
+  syncWidget();
 }
 document.addEventListener('visibilitychange',async()=>{
   if(document.visibilityState!=='visible') return;
   refreshStatus();
   drainPending();
+  await drainWidgetRecords();
   await drainAutoRecords();
   syncNag();
   syncForget();
   refreshAutoStatus();
+  syncWidget();
 });
 async function drainPending(){
   if(!isNative()) return;
@@ -1054,5 +1098,5 @@ try { if(isNative()){ const App=plugin('App'); if(App&&App.getInfo){ App.getInfo
 if(!isNative()&&'serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 
 /* 헤드리스 검증용 (앱 동작에는 영향 없음) */
-window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist,syncNag,syncForget,renderNag,renderForget,get nagStatus(){return nagStatus},get nagSettings(){return nagSettings},get forgetStatus(){return forgetStatus},applyAutoRecord,autoRecordDecision,drainAutoRecords,handleAutoRecordPush,persistAutoSettings,get autoSettings(){return autoSettings},get autoStatus(){return autoStatus}};
+window.__ot={handleCommuteAction,get records(){return records},get settings(){return settings},exportRows,tsv,csv,recordsFromCsv,recordsFromJson,applyImport,importText,loadDate,showTab,dkey,today,persist,syncNag,syncForget,renderNag,renderForget,get nagStatus(){return nagStatus},get nagSettings(){return nagSettings},get forgetStatus(){return forgetStatus},applyAutoRecord,autoRecordDecision,drainAutoRecords,handleAutoRecordPush,persistAutoSettings,get autoSettings(){return autoSettings},get autoStatus(){return autoStatus},syncWidget,drainWidgetRecords,widgetPayload};
 </script></body></html>

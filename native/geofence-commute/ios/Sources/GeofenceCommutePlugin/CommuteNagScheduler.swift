@@ -243,7 +243,7 @@ enum CommuteNagScheduler {
         content.subtitle = "퇴근시간 +\(round.round)시간"
         content.body = round.phrase
         content.sound = .default
-        content.categoryIdentifier = "COMMUTE"
+        content.categoryIdentifier = CommuteNotificationHandler.clockOutCategory
         content.threadIdentifier = "commute"
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]

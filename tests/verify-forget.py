@@ -7,7 +7,7 @@
     50일 동안 150개를 한 번씩 다 쓴다 (Swift 와 같은 식을 그대로 계산)
  C. 예약 규칙: 이탈 +1·+2·+3시간, 자정을 넘는 회차·이미 지난 회차는 제외
  D. 정적 검사: 플러그인 메서드/예약·취소 API/알림 payload/지오펜스 이탈 연동/
-    퇴근 저장 시 즉시 취소/웹 화면(카드·이탈 시각 프리필)/빌드 번호 7
+    퇴근 저장 시 즉시 취소/웹 화면(카드·이탈 시각 프리필)/빌드 번호 8
  E. 헤드리스 Chromium + 가짜 네이티브: 설정 카드 표시, 1분 테스트 호출,
     깜빡 알림을 누르면 **회사를 나선 시각**이 퇴근 칸에 채워지는지, 저장 시 clockOut 전달
 
@@ -160,7 +160,8 @@ def main():
           all(k in forget for k in ['"forget": true', '"exitEpoch":', '"type": "out"']))
     check('알림 payload 에 퇴근 시각(exitTime)·대상 날짜',
           '"exitTime":' in forget and '"date": day' in forget)
-    check('깜빡 알림은 기존 COMMUTE 카테고리 재사용', 'categoryIdentifier = "COMMUTE"' in forget)
+    check('깜빡 알림은 퇴근 찍기 버튼이 달린 카테고리(COMMUTE_OUT)',
+          'categoryIdentifier = CommuteNotificationHandler.clockOutCategory' in forget)
     check('알림 식별자 prefix 로 기존 독촉과 분리', '"commute-forget-"' in forget)
     check('퇴근 기록(clockOut)이 있으면 예약하지 않음',
           '!day.clockIn.isEmpty' in forget and 'day.clockOut.isEmpty' in forget)
@@ -186,10 +187,11 @@ def main():
           and "clockOut:r.actualEnd||''" in html)
 
     cm = read('codemagic.yaml')
-    check('codemagic: 빌드 번호 7 고정', 'APP_BUILD_NUMBER: "7"' in cm and '$BUILD" != "7"' in cm)
+    check('codemagic: 빌드 번호 8 고정', 'APP_BUILD_NUMBER: "8"' in cm and '$BUILD" != "8"' in cm)
     pbx = read('ios/App/App.xcodeproj/project.pbxproj')
-    check('Xcode: CURRENT_PROJECT_VERSION = 7', pbx.count('CURRENT_PROJECT_VERSION = 7;') == 2)
-    check('Xcode: MARKETING_VERSION = 1.0', pbx.count('MARKETING_VERSION = 1.0;') == 2)
+    check('Xcode: CURRENT_PROJECT_VERSION = 8 (앱·위젯)', pbx.count('CURRENT_PROJECT_VERSION = 8;') >= 2
+          and 'CURRENT_PROJECT_VERSION = 7;' not in pbx)
+    check('Xcode: MARKETING_VERSION = 1.0 (앱·위젯)', pbx.count('MARKETING_VERSION = 1.0;') >= 2)
 
     # ---------- E. 헤드리스 ----------
     fake = r"""

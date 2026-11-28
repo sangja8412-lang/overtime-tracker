@@ -8,7 +8,7 @@
  C. 예약 규칙: 정규 퇴근 +1~+4시간, 이미 지난 회차·자정 이후 회차는 제외,
     출근이 늦으면 남은 회차만 — Swift 계산식과 같은 순수 함수로 검증
  D. 정적 검사: 플러그인 메서드/예약·취소 API/알림 payload/지오펜스 연동,
-    웹 화면(설정 카드·syncCommuteNag 호출 지점), 빌드 번호 7
+    웹 화면(설정 카드·syncCommuteNag 호출 지점), 빌드 번호 8
  E. 헤드리스 Chromium + 가짜 네이티브: 웹이 오늘 기록을 넘겨 예약을 맞추는지,
     독촉 알림을 누르면 지금 시각으로 퇴근 칸이 채워지는지
 
@@ -149,7 +149,7 @@ def main():
     check('취소: 알림 센터의 독촉 알림도 정리', 'removeDeliveredNotifications' in sched)
     check('알림 payload 에 type/nag/round/date',
           all(k in sched for k in ['"type": "out"', '"nag": true', '"round": round.round', '"date": dateText']))
-    check('독촉 알림은 기존 COMMUTE 카테고리 재사용', 'categoryIdentifier = "COMMUTE"' in sched)
+    check('독촉 알림은 퇴근 찍기 버튼이 달린 카테고리(COMMUTE_OUT)', 'categoryIdentifier = CommuteNotificationHandler.clockOutCategory' in sched)
     check('퇴근 저장 → 오늘 독촉 중지(clockOut)', '"clockOut"' in sched and 'suppress(date: today, reason: "clockOut")' in swift)
     check('회사 반경 이탈 → 오늘 독촉 중지(geofenceExit)',
           'suppress(date: today, reason: "geofenceExit")' in swift)
@@ -163,17 +163,18 @@ def main():
     check('웹: syncCommuteNag 호출', 'P.syncCommuteNag(' in html and 'typeof P.syncCommuteNag' in html)
     check('웹: 저장(persist) 시 동기화', re.search(r'refresh\(\);\s*syncNag\(\);', html) is not None)
     check('웹: 앱 시작·포그라운드 복귀 시 동기화',
-          'await drainAutoRecords();\n  syncNag();' in html and 'drainPending();\n  await drainAutoRecords();' in html)
-    check('웹: 기본 퇴근시간 저장 시 동기화', "syncNag();alert('저장했어요.')" in html)
+          'await drainAutoRecords();\n  syncNag();' in html and 'drainPending();\n  await drainWidgetRecords();' in html)
+    check('웹: 기본 퇴근시간 저장 시 동기화', "syncNag();syncWidget();alert('저장했어요.')" in html)
     check('웹: 독촉 알림 탭 구분(nag)',
           'const isNag=!!payload.nag' in html and '퇴근 독촉 · ' in html)
     check('웹: 독촉 탭은 지금 시각으로 프리필', 'isNag?new Date():toPayloadTime(payload)' in html)
 
     cm = read('codemagic.yaml')
-    check('codemagic: 빌드 번호 7 고정', 'APP_BUILD_NUMBER: "7"' in cm and 'APP_BUILD_NUMBER:-' in cm)
+    check('codemagic: 빌드 번호 8 고정', 'APP_BUILD_NUMBER: "8"' in cm and 'APP_BUILD_NUMBER:-' in cm)
     pbx = read('ios/App/App.xcodeproj/project.pbxproj')
-    check('Xcode: CURRENT_PROJECT_VERSION = 7', pbx.count('CURRENT_PROJECT_VERSION = 7;') == 2)
-    check('Xcode: MARKETING_VERSION = 1.0', pbx.count('MARKETING_VERSION = 1.0;') == 2)
+    check('Xcode: CURRENT_PROJECT_VERSION = 8 (앱·위젯)', pbx.count('CURRENT_PROJECT_VERSION = 8;') >= 2
+          and 'CURRENT_PROJECT_VERSION = 7;' not in pbx)
+    check('Xcode: MARKETING_VERSION = 1.0 (앱·위젯)', pbx.count('MARKETING_VERSION = 1.0;') >= 2)
 
     # ---------- E. 헤드리스 ----------
     fake = r"""

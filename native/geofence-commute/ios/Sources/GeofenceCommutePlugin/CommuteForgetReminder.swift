@@ -202,7 +202,7 @@ enum CommuteForgetScheduler {
         content.subtitle = "회사 나온 지 \(round.round)시간"
         content.body = round.phrase
         content.sound = .default
-        content.categoryIdentifier = "COMMUTE"
+        content.categoryIdentifier = CommuteNotificationHandler.clockOutCategory
         content.threadIdentifier = "commute"
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
